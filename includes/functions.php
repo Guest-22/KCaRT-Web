@@ -1,0 +1,224 @@
+<?php
+declare(strict_types=1);
+
+function e(mixed $value): string
+{
+    return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
+function redirect(string $page = 'dashboard', array $query = []): never
+{
+    $query = ['page' => $page] + $query;
+    header('Location: index.php?' . http_build_query($query));
+    exit;
+}
+
+function current_user(): ?array
+{
+    return $_SESSION['user'] ?? null;
+}
+
+function require_login(): void
+{
+    if (current_user() === null) {
+        redirect('login');
+    }
+}
+
+function require_admin(): void
+{
+    require_login();
+    if (current_user()['role'] !== 'Admin') {
+        http_response_code(403);
+        exit('You do not have permission to access this page.');
+    }
+}
+
+function csrf_token(): string
+{
+    if (!isset($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+function csrf_field(): string
+{
+    return '<input type="hidden" name="csrf_token" value="' . e(csrf_token()) . '">';
+}
+
+function verify_csrf(): void
+{
+    $submitted = $_POST['csrf_token'] ?? '';
+    if (!is_string($submitted) || !hash_equals(csrf_token(), $submitted)) {
+        http_response_code(419);
+        exit('Your session token expired. Go back, reload the form, and try again.');
+    }
+}
+
+function flash(string $message, string $type = 'success'): void
+{
+    $_SESSION['flash'] = ['message' => $message, 'type' => $type];
+}
+
+function take_flash(): ?array
+{
+    $message = $_SESSION['flash'] ?? null;
+    unset($_SESSION['flash']);
+    return $message;
+}
+
+function setting(PDO $pdo, string $key, string $default = '0.00'): string
+{
+    $statement = $pdo->prepare('SELECT setting_value FROM tbl_setting WHERE setting_key = ?');
+    $statement->execute([$key]);
+    $value = $statement->fetchColumn();
+    return $value === false ? $default : (string) $value;
+}
+
+function money(mixed $amount): string
+{
+    return '₱' . number_format((float) $amount, 2);
+}
+
+function full_name(array $person): string
+{
+    return trim(implode(' ', array_filter([
+        $person['first_name'] ?? '',
+        $person['middle_name'] ?? '',
+        $person['last_name'] ?? '',
+    ], static fn(string $part): bool => $part !== '')));
+}
+
+function post_string(string $key, int $maxLength = 255, bool $required = true): string
+{
+    $rawValue = $_POST[$key] ?? '';
+    if (!is_string($rawValue)) {
+        throw new InvalidArgumentException('Please enter valid form data.');
+    }
+    $value = trim($rawValue);
+    if ($required && $value === '') {
+        throw new InvalidArgumentException('Please complete all required fields.');
+    }
+    if (mb_strlen($value) > $maxLength) {
+        throw new InvalidArgumentException('One or more fields are longer than allowed.');
+    }
+    return $value;
+}
+
+function post_enum(string $key, array $allowed): string
+{
+    $value = $_POST[$key] ?? '';
+    if (!is_string($value)) {
+        throw new InvalidArgumentException('Please select a valid option.');
+    }
+    if (!in_array($value, $allowed, true)) {
+        throw new InvalidArgumentException('Please select a valid option.');
+    }
+    return $value;
+}
+
+function post_int(string $key, int $minimum = 0): int
+{
+    $value = filter_var($_POST[$key] ?? null, FILTER_VALIDATE_INT);
+    if ($value === false || $value < $minimum) {
+        throw new InvalidArgumentException('Please enter a valid number.');
+    }
+    return $value;
+}
+
+function post_amount(string $key, float $minimum = 0): float
+{
+    $value = filter_var($_POST[$key] ?? null, FILTER_VALIDATE_FLOAT);
+    if ($value === false || !is_finite((float) $value) || $value < $minimum) {
+        throw new InvalidArgumentException('Please enter a valid amount.');
+    }
+    return round((float) $value, 2);
+}
+
+function post_email(string $key, bool $required = false): ?string
+{
+    $value = post_string($key, 100, $required);
+    if ($value === '') {
+        return null;
+    }
+    if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
+        throw new InvalidArgumentException('Please enter a valid email address.');
+    }
+    return $value;
+}
+
+function post_optional_date(string $key): ?string
+{
+    $rawValue = $_POST[$key] ?? '';
+    if (!is_string($rawValue)) {
+        throw new InvalidArgumentException('Please enter valid date data.');
+    }
+    $value = trim($rawValue);
+    if ($value === '') {
+        return null;
+    }
+    $date = DateTime::createFromFormat('!Y-m-d', $value);
+    if (!$date || $date->format('Y-m-d') !== $value || $date > new DateTime('today')) {
+        throw new InvalidArgumentException('Please enter a valid date that is not in the future.');
+    }
+    return $value;
+}
+
+function post_date(string $key): string
+{
+    $rawValue = $_POST[$key] ?? '';
+    if (!is_string($rawValue)) {
+        throw new InvalidArgumentException('Please enter valid date and time data.');
+    }
+    $value = trim($rawValue);
+    $date = DateTime::createFromFormat('Y-m-d\TH:i', $value);
+    if (!$date || $date->format('Y-m-d\TH:i') !== $value) {
+        throw new InvalidArgumentException('Please enter a valid date and time.');
+    }
+    return $date->format('Y-m-d H:i:s');
+}
+
+function uploaded_blob(string $key): ?string
+{
+    $file = $_FILES[$key] ?? null;
+    if (!$file || $file['error'] === UPLOAD_ERR_NO_FILE) {
+        return null;
+    }
+    if ($file['error'] !== UPLOAD_ERR_OK || $file['size'] > 5 * 1024 * 1024) {
+        throw new InvalidArgumentException('Uploads must be no larger than 5 MB.');
+    }
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+    if (!in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true)) {
+        throw new InvalidArgumentException('Upload a JPG, PNG, or WebP image.');
+    }
+    $contents = file_get_contents($file['tmp_name']);
+    if ($contents === false) {
+        throw new RuntimeException('The uploaded file could not be read.');
+    }
+    return $contents;
+}
+
+function status_class(string $status): string
+{
+    return match (strtolower($status)) {
+        'available', 'active', 'paid', 'completed' => 'status-good',
+        'reserved', 'pending', 'partial', 'late', 'maintenance' => 'status-warn',
+        'rented', 'unpaid', 'dismissed', 'inactive' => 'status-muted',
+        default => 'status-muted',
+    };
+}
+
+function render_status(string $status): string
+{
+    return '<span class="status ' . e(status_class($status)) . '">' . e($status) . '</span>';
+}
+
+function require_post(): void
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        http_response_code(405);
+        exit('Method not allowed.');
+    }
+    verify_csrf();
+}

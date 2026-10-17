@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kcart Rentals | System Workflow Guide</title>
+<style>
+@page { size: A4; margin: 17mm 18mm 18mm; }
+:root { color: #20333b; font-family: "Segoe UI", Arial, sans-serif; font-size: 10pt; }
+* { box-sizing: border-box; }
+body { margin: 0; line-height: 1.48; }
+h1,h2,h3,p { margin-top: 0; }
+h1 { margin-bottom: 8px; font-size: 31pt; line-height: 1.08; letter-spacing: -1.2px; }
+h2 { margin: 0 0 9px; color: #126d61; font-size: 17pt; }
+h3 { margin: 0 0 5px; font-size: 11pt; }
+p { margin-bottom: 9px; }
+.cover { display: flex; min-height: 250mm; flex-direction: column; justify-content: space-between; page-break-after: always; }
+.cover-brand { display: flex; align-items: center; gap: 13px; color: #147d70; font-size: 14pt; font-weight: 700; }
+.cover-brand img { width: 48px; height: 48px; }
+.cover-main { max-width: 150mm; }
+.eyebrow { color: #147d70; font-size: 8pt; font-weight: 700; letter-spacing: 2px; }
+.subtitle { color: #61747b; font-size: 14pt; }
+.cover-note { max-width: 122mm; padding: 13px 15px; border-left: 3px solid #147d70; background: #f1f7f5; }
+.footer { padding-top: 9px; border-top: 1px solid #dfe8e7; color: #718188; font-size: 8pt; }
+.section { page-break-before: always; }
+.section.first { page-break-before: auto; }
+.lead { color: #64777e; font-size: 11pt; }
+.cards { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; margin: 14px 0; }
+.card { padding: 12px; border: 1px solid #dfe8e7; border-radius: 8px; break-inside: avoid; }
+.card h3 { color: #147d70; }
+.callout { margin: 11px 0; padding: 11px 13px; border-radius: 7px; background: #eff7f4; }
+.warning { background: #fff6e8; }
+table { width: 100%; margin: 12px 0; border-collapse: collapse; font-size: 9pt; }
+th { padding: 8px; background: #203b43; color: white; text-align: left; }
+td { padding: 8px; border-bottom: 1px solid #e4eaea; vertical-align: top; }
+ol,ul { padding-left: 21px; }
+li { margin: 0 0 7px; padding-left: 2px; }
+.step { margin: 0 0 10px; padding: 0 0 0 10px; border-left: 2px solid #8dcabb; break-inside: avoid; }
+.step strong { color: #203b43; }
+.path { display: inline-block; padding: 2px 5px; border-radius: 4px; background: #f0f4f4; color: #145f56; font-family: Consolas, monospace; font-size: 9pt; }
+.small { color: #6e7e84; font-size: 8.5pt; }
+.flow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 13px 0; }
+.flow span { padding: 7px 9px; border: 1px solid #dce8e5; border-radius: 6px; background: #f4f8f7; font-size: 9pt; font-weight: 600; }
+.flow b { color: #147d70; }
+.asset { margin: 9px 0; padding: 11px; border: 1px solid #dfe8e7; border-radius: 7px; break-inside: avoid; }
+.asset img { width: 38px; height: 38px; margin-right: 8px; vertical-align: middle; }
+.logo-preview { display: flex; align-items: center; margin: 9px 0; }
+@media screen {
+    body { max-width: 210mm; margin: 20px auto; padding: 20px; box-shadow: 0 5px 35px #cbd5d5; }
+    .section { margin-top: 35px; padding-top: 20px; border-top: 1px solid #e4eaea; }
+}
+</style>
+</head>
+<body>
+<header class="cover">
+  <div class="cover-brand"><img src="../assets/images/logo.svg" alt=""><span>Kcart Rentals</span></div>
+  <div class="cover-main">
+    <p class="eyebrow">OPERATIONS PLAYBOOK · BATAAN, PHILIPPINES</p>
+    <h1>Car Rental Management System</h1>
+    <p class="subtitle">System overview, role-based procedures, and customization guide</p>
+    <p>This guide describes the current local Kcart Rentals application and the recommended end-to-end workflow for administrators and staff.</p>
+    <div class="cover-note"><strong>Local deployment:</strong> PHP 8.1+, MySQL/MariaDB, and Apache on XAMPP. Business timezone is Asia/Manila; displayed money uses Philippine peso formatting.</div>
+  </div>
+  <div class="footer">Updated 17 October 2026 · Internal setup and operating guide</div>
+</header>
+
+<section class="section first">
+  <p class="eyebrow">01 · AT A GLANCE</p>
+  <h2>How the system works</h2>
+  <p class="lead">One shared workspace tracks people, vehicles, reservations, check-outs, returns, invoices, payments, and operating performance.</p>
+  <div class="flow"><span>Customer</span><b>→</b><span>Vehicle & availability</span><b>→</b><span>Reservation</span><b>→</b><span>Reservation payment</span><b>→</b><span>Pickup</span><b>→</b><span>Return & final billing</span></div>
+  <div class="cards">
+    <div class="card"><h3>Operations</h3><p>Customer and fleet records support rental booking. Vehicle availability is updated as a reservation or rental changes state.</p></div>
+    <div class="card"><h3>Billing</h3><p>Reservation, rental-balance, damage, and late-return invoices share a payment history. Partial payments retain the remaining balance.</p></div>
+    <div class="card"><h3>Monitoring</h3><p>Dashboard and Reports show current operating metrics, six-month collections, rental pipeline, fleet status, and customer activity.</p></div>
+    <div class="card"><h3>Local context</h3><p>Sample customers use Bataan addresses. The app runs on Asia/Manila time and presents amounts in PHP.</p></div>
+  </div>
+  <h3>Reservation and return rules</h3>
+  <ul>
+    <li>Rental duration is charged in 24-hour days, with a one-day minimum and partial days rounded up.</li>
+    <li>A configurable reservation fee must be paid before pickup. Pickup can be confirmed at the scheduled pickup time through one hour afterward.</li>
+    <li>After the grace period, uncollected reservations are dismissed and their vehicle is released. No automatic refund is issued.</li>
+    <li>Overdue active rentals are marked Late. Return records mileage and condition, releases the car, and can create damage and configurable per-day late-fee invoices.</li>
+  </ul>
+</section>
+
+<section class="section">
+  <p class="eyebrow">02 · ACCESS MODEL</p>
+  <h2>Admin and Staff responsibilities</h2>
+  <table>
+    <thead><tr><th>Capability</th><th>Admin</th><th>Staff</th></tr></thead>
+    <tbody>
+      <tr><td>Dashboard, customer records, fleet, rentals, returns, billing</td><td>Allowed</td><td>Allowed</td></tr>
+      <tr><td>Reports and CSV downloads</td><td>Allowed</td><td>Allowed</td></tr>
+      <tr><td>Create, edit, deactivate team accounts and assign roles</td><td>Allowed</td><td>Restricted</td></tr>
+      <tr><td>Change reservation and late-fee settings</td><td>Allowed</td><td>Restricted</td></tr>
+      <tr><td>Sign in and sign out</td><td>Allowed</td><td>Allowed</td></tr>
+    </tbody>
+  </table>
+  <div class="callout"><strong>Security:</strong> Roles are checked on the server, not just hidden in the navigation. Create individual accounts for real users; do not share the local demo credentials.</div>
+</section>
+
+<section class="section">
+  <p class="eyebrow">03 · ADMIN PLAYBOOK</p>
+  <h2>Administrator: setup and daily operations</h2>
+  <div class="step"><strong>1. Sign in.</strong> Open the local Kcart URL and use your Admin account. Confirm the Admin role is shown in the sidebar.</div>
+  <div class="step"><strong>2. Secure access.</strong> Open <em>Team &amp; access</em>, create a named account per team member, select Staff or Admin carefully, and issue a unique strong password. Deactivate accounts that no longer need access.</div>
+  <div class="step"><strong>3. Configure billing.</strong> Open <em>Settings</em>. Set the reservation fee and late-return fee per day to approved business values. Confirm the one-hour pickup grace rule with staff.</div>
+  <div class="step"><strong>4. Prepare records.</strong> Add active customers with verified contact details and add vehicles with plate, specifications, mileage, daily rate, and current fleet status. Upload optional photos/IDs only with customer consent and appropriate handling.</div>
+  <div class="step"><strong>5. Create or oversee reservations.</strong> Select an active customer and available vehicle, choose pickup/return date and time, review the estimate, and save. The system reserves the car and creates the reservation-fee invoice.</div>
+  <div class="step"><strong>6. Confirm payment and pickup.</strong> Verify the reservation invoice is paid before confirming pickup. The customer must arrive within the scheduled pickup time plus the one-hour grace period.</div>
+  <div class="step"><strong>7. Process vehicle return.</strong> Record incoming mileage, vehicle condition, notes, and any approved damage charge. The system completes the rental, updates mileage, releases the vehicle, and creates eligible charge invoices.</div>
+  <div class="step"><strong>8. Reconcile and review.</strong> Check Billing for outstanding balances and payment history; use Dashboard and Reports for collection trends, fleet availability, rental states, customer rankings, and CSV exports.</div>
+  <div class="step"><strong>9. Sign out.</strong> Use the visible <em>Log out</em> button in the account area after each shared-device session.</div>
+</section>
+
+<section class="section">
+  <p class="eyebrow">04 · STAFF PLAYBOOK</p>
+  <h2>Staff: reservation through return</h2>
+  <div class="step"><strong>1. Sign in with your Staff account.</strong> Confirm the Staff role is shown. Team &amp; access and Settings are intentionally unavailable.</div>
+  <div class="step"><strong>2. Find or register the renter.</strong> Search Customers first. If the record is missing, add the customer and enter accurate contact details. Upload images only when needed and authorized.</div>
+  <div class="step"><strong>3. Check the fleet.</strong> Open Vehicle fleet and confirm the selected vehicle is Available. Check its rate, mileage, and details before promising it.</div>
+  <div class="step"><strong>4. Make the reservation.</strong> From Dashboard or Rentals, choose the active customer, available vehicle, pickup and expected-return time. Review the calculated day-based estimate and create the reservation.</div>
+  <div class="step"><strong>5. Collect the reservation fee.</strong> Open the generated invoice in Billing, select the actual payment method, enter any reference, record the amount, and verify the invoice status/balance. Never record a payment that was not actually received.</div>
+  <div class="step"><strong>6. Handover the car.</strong> Open the rental and confirm pickup only after the reservation invoice is Paid and arrival is inside the pickup window. The rental becomes Active and the vehicle becomes Rented.</div>
+  <div class="step"><strong>7. Check in the car.</strong> At return, open Returns, choose the open rental, enter the odometer reading, inspect and select the condition, add factual notes, and enter only approved damage charges. Complete the return.</div>
+  <div class="step"><strong>8. Close out billing.</strong> Review the rental’s invoices. Collect final balance, damage, or late-fee amounts as applicable; partial payments are supported. Give the customer the printed invoice/receipt where needed.</div>
+  <div class="step"><strong>9. Review and sign out.</strong> Use Reports for operating summaries and permitted CSVs. Click <em>Log out</em> before leaving the workstation.</div>
+</section>
+
+<section class="section">
+  <p class="eyebrow">05 · IMAGE AND BRANDING FILES</p>
+  <h2>Where to replace the logo or images</h2>
+  <div class="asset">
+    <div class="logo-preview"><img src="../assets/images/logo.svg" alt="Current Kcart logo"><strong>Application logo</strong></div>
+    <p>Replace the current logo at <span class="path">assets/images/logo.svg</span>. The sidebar, sign-in page, and printed invoices reference this exact path. Keep the filename and SVG format, or update each <span class="path">src</span> reference in <span class="path">includes/header.php</span>, <span class="path">modules/login.php</span>, and <span class="path">modules/billing.php</span> if you use another filename/format.</p>
+  </div>
+  <div class="asset"><strong>Customer and vehicle images</strong><p>These are uploaded in Customers and Vehicle fleet forms; accepted formats are JPG, PNG, and WebP, maximum 5 MB per image. The files are validated then stored as image blobs in the MySQL <span class="path">tbl_customer</span> and <span class="path">tbl_car</span> records—not as loose files in a project image folder. The app serves them through authenticated image routes.</p></div>
+  <div class="callout warning"><strong>Branding recommendation:</strong> Replace <span class="path">assets/images/logo.svg</span> with your approved business logo. If using raster artwork, use a transparent PNG and update the header image path. Keep a backup of the original asset before replacing it.</div>
+  <p class="small">The project image asset folder is <span class="path">assets/images/</span>. The replaceable logo file is <span class="path">assets/images/logo.svg</span>. There are no bundled customer or vehicle photos; sample records use neutral placeholders until you upload approved images.</p>
+</section>
+
+<section class="section">
+  <p class="eyebrow">06 · LOCAL TEST DATA &amp; RECOMMENDATIONS</p>
+  <h2>Testing, security, and operational recommendations</h2>
+  <ul>
+    <li>The local database contains synthetic Bataan customer, vehicle, rental, return, invoice, and payment records to exercise dashboards and workflows. These are fictional test records.</li>
+    <li>Local demo logins are <span class="path">admin</span> and <span class="path">staff</span>; their passwords match their usernames. Change both immediately before using real records, sharing access, or exposing the server beyond localhost.</li>
+    <li>Use unique named accounts and strong passwords, schedule database backups, and test restoration. Restrict phpMyAdmin and MySQL access to trusted administrators.</li>
+    <li>Before production, define written rules for deposits/refunds, damage assessment, payment reconciliation, document retention, privacy/consent, and late-fee disputes. The current system does not automatically refund a dismissed reservation.</li>
+    <li>Run <span class="path">maintenance.php</span> through Windows Task Scheduler every five minutes if no-show and late statuses must update when the site is idle.</li>
+  </ul>
+  <div class="callout"><strong>Test workflow checklist:</strong> sign in by role → add customer/vehicle → reserve → collect reservation fee → confirm pickup → process return → reconcile invoices → inspect dashboard/reports → sign out.</div>
+  <div class="footer">Kcart Rentals · Local operations guide · Bataan, Philippines</div>
+</section>
+</body>
+</html>
