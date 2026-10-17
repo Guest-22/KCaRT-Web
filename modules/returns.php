@@ -1,5 +1,5 @@
 <?php
-$selectedRentalId = (int) ($_GET['rental_id'] ?? 0);
+$selectedRentalId = query_id('rental_id');
 $query = trim(is_string($_GET['q'] ?? null) ? $_GET['q'] : '');
 $like = '%' . $query . '%';
 $openQuery = "SELECT r.rental_id,r.expected_return_date,r.rental_status,c.first_name,c.last_name,v.brand,v.model,v.plate_no,v.mileage FROM tbl_rental r JOIN tbl_customer c ON c.customer_id=r.customer_id JOIN tbl_car v ON v.car_id=r.car_id WHERE r.rental_status IN ('Active','Late')";
@@ -21,9 +21,9 @@ foreach ($openRentals as $candidate) {
 <div class="page-heading"><div><p class="eyebrow">VEHICLE CHECK-IN</p><h1>Returns</h1><p class="heading-copy">Record mileage, vehicle condition, and any damage charges.</p></div></div>
 <?php if ($selectedRental): ?><section class="panel form-panel"><div class="panel-heading"><div><h2>Process rental #R<?= (int) $selectedRental['rental_id'] ?></h2><p><?= e($selectedRental['brand'] . ' ' . $selectedRental['model'] . ' · ' . $selectedRental['plate_no']) ?> · <?= e($selectedRental['first_name'] . ' ' . $selectedRental['last_name']) ?></p></div><?= render_status($selectedRental['rental_status']) ?></div>
 <form method="post" class="form-grid"><?= csrf_field() ?><input type="hidden" name="action" value="return_save"><input type="hidden" name="rental_id" value="<?= (int) $selectedRental['rental_id'] ?>">
-    <label>Current mileage out (km)<input value="<?= (int) $selectedRental['mileage'] ?>" disabled></label><label>Return mileage in (km) <span class="required">*</span><input type="number" name="mileage_in" min="<?= (int) $selectedRental['mileage'] ?>" value="<?= (int) $selectedRental['mileage'] ?>" required></label>
+    <label>Current mileage out (km)<input value="<?= (int) $selectedRental['mileage'] ?>" disabled></label><label>Return mileage in (km) <span class="required">*</span><input type="number" name="mileage_in" min="<?= (int) $selectedRental['mileage'] ?>" max="2147483647" value="<?= (int) $selectedRental['mileage'] ?>" required></label>
     <label>Vehicle condition<select name="vehicle_condition"><?php foreach (['Excellent','Good','Fair','Damaged'] as $condition): ?><option><?= e($condition) ?></option><?php endforeach; ?></select></label>
-    <label>Damage fee (₱)<input type="number" name="damage_fee" min="0" step="0.01" value="0.00" required></label>
+    <label>Damage fee (₱)<input type="number" name="damage_fee" min="0" max="99999999.99" step="0.01" value="0.00" required></label>
     <label class="span-two">Remarks<input name="remarks" maxlength="255" placeholder="Optional notes about the return"></label>
     <div class="form-actions span-two"><a class="button button-quiet" href="index.php?page=returns">Cancel</a><button class="button button-primary" type="submit">Complete vehicle return</button></div>
 </form></section><?php elseif ($selectedRentalId): ?><div class="alert alert-error">This rental is not open for return.</div><?php endif; ?>

@@ -14,7 +14,7 @@ function process_action(PDO $pdo): void
         switch ($action) {
             case 'login':
                 $username = post_string('username', 50);
-                $password = (string) ($_POST['password'] ?? '');
+                $password = post_password('password');
                 $statement = $pdo->prepare("SELECT * FROM tbl_user WHERE username = ? AND user_status = 'Active' LIMIT 1");
                 $statement->execute([$username]);
                 $user = $statement->fetch();
@@ -38,18 +38,25 @@ function process_action(PDO $pdo): void
 
             case 'customer_save':
                 require_login();
-                $id = (int) ($_POST['customer_id'] ?? 0);
+                $id = post_record_id('customer_id');
                 $values = [
                     post_string('first_name', 50),
                     post_string('middle_name', 50, false),
                     post_string('last_name', 50),
                     post_enum('sex', ['Male', 'Female', 'Other']),
-                    post_optional_date('date_of_birth'),
-                    post_string('contact_no', 20),
+                    post_adult_date('date_of_birth', 20),
+                    post_phone('contact_no'),
                     post_email('email'),
                     post_string('address', 255, false) ?: null,
                     post_enum('customer_status', ['Active', 'Inactive']),
                 ];
+                if ($id > 0) {
+                    $existingCustomer = $pdo->prepare('SELECT customer_id FROM tbl_customer WHERE customer_id=?');
+                    $existingCustomer->execute([$id]);
+                    if (!$existingCustomer->fetchColumn()) {
+                        throw new InvalidArgumentException('Customer record not found.');
+                    }
+                }
                 $uploads = [
                     'driver_license' => uploaded_blob('driver_license'),
                     'secondary_id' => uploaded_blob('secondary_id'),
@@ -71,8 +78,8 @@ function process_action(PDO $pdo): void
                 redirect('customers');
 
             case 'vehicle_save':
-                require_login();
-                $id = (int) ($_POST['car_id'] ?? 0);
+                require_admin();
+                $id = post_record_id('car_id');
                 $values = [
                     strtoupper(post_string('plate_no', 20)),
                     post_string('brand', 50),
@@ -82,12 +89,18 @@ function process_action(PDO $pdo): void
                     post_string('color', 30),
                     post_enum('transmission_type', ['Automatic', 'Manual']),
                     post_enum('fuel_type', ['Gasoline', 'Diesel', 'Electric', 'Hybrid']),
-                    post_int('seat_cap', 1),
-                    post_int('mileage'),
+                    post_int('seat_cap', 1, 99),
+                    post_int('mileage', 0, 2147483647),
                     post_amount('daily_rate', 0.01),
                 ];
+                if (!preg_match('/^[A-Z0-9][A-Z0-9 -]{1,19}$/', $values[0])) {
+                    throw new InvalidArgumentException('Enter a valid plate number using letters, numbers, spaces, or hyphens.');
+                }
                 if ((int) $values[4] > (int) date('Y') + 1) {
                     throw new InvalidArgumentException('Enter a valid vehicle year.');
+                }
+                if ((int) $values[8] > 99) {
+                    throw new InvalidArgumentException('Seat capacity must be between 1 and 99.');
                 }
                 $photo = uploaded_blob('car_photo');
                 if ($id > 0) {
@@ -115,7 +128,7 @@ function process_action(PDO $pdo): void
                 redirect('vehicles');
 
             case 'vehicle_status':
-                require_login();
+                require_admin();
                 $carId = post_int('car_id', 1);
                 $status = post_enum('car_status', ['Available', 'Maintenance']);
                 $pdo->beginTransaction();
@@ -160,6 +173,9 @@ function process_action(PDO $pdo): void
                 }
                 $days = max(1, (int) ceil((strtotime($expected) - strtotime($start)) / 86400));
                 $total = round($days * (float) $vehicle['daily_rate'], 2);
+                if ($total > 99999999.99) {
+                    throw new InvalidArgumentException('The rental total exceeds the maximum supported invoice amount.');
+                }
                 $reservationFee = min($total, max(0, (float) setting($pdo, 'reservation_fee', '1000.00')));
                 $pdo->prepare("INSERT INTO tbl_rental (customer_id,car_id,processed_by,start_date,expected_return_date,rental_status,total_amount) VALUES (?,?,?,?,?,'Pending',?)")
                     ->execute([$customerId, $carId, current_user()['user_id'], $start, $expected, $total]);
@@ -181,6 +197,11 @@ function process_action(PDO $pdo): void
                 if (!$rental || $rental['invoice_status'] !== 'Paid') {
                     throw new InvalidArgumentException('Pay the reservation fee before confirming pickup.');
                 }
+                $customerStatus = $pdo->prepare("SELECT customer_status FROM tbl_customer WHERE customer_id=? FOR UPDATE");
+                $customerStatus->execute([(int) $rental['customer_id']]);
+                if ($customerStatus->fetchColumn() !== 'Active') {
+                    throw new InvalidArgumentException('Reactivate the customer account before confirming vehicle pickup.');
+                }
                 $now = time();
                 if ($now < strtotime($rental['start_date']) || $now > strtotime($rental['start_date']) + 3600) {
                     throw new InvalidArgumentException('Pickup can be confirmed only from the scheduled time through the one-hour grace period.');
@@ -197,7 +218,7 @@ function process_action(PDO $pdo): void
             case 'return_save':
                 require_login();
                 $rentalId = post_int('rental_id', 1);
-                $mileageIn = post_int('mileage_in');
+                $mileageIn = post_int('mileage_in', 0, 2147483647);
                 $condition = post_enum('vehicle_condition', ['Excellent', 'Good', 'Fair', 'Damaged']);
                 $damageFee = post_amount('damage_fee');
                 $remarks = post_string('remarks', 255, false);
@@ -223,8 +244,12 @@ function process_action(PDO $pdo): void
                 $lateSeconds = strtotime($now) - strtotime($rental['expected_return_date']);
                 if ($lateRate > 0 && $lateSeconds > 0) {
                     $lateDays = (int) ceil($lateSeconds / 86400);
+                    $lateAmount = round($lateDays * $lateRate, 2);
+                    if ($lateAmount > 99999999.99) {
+                        throw new InvalidArgumentException('The late fee exceeds the maximum supported invoice amount.');
+                    }
                     $pdo->prepare("INSERT INTO tbl_invoice (rental_id,description,invoice_amount,invoice_status,due_date) VALUES (?,'Late return fee',?,'Unpaid',CURDATE())")
-                        ->execute([$rentalId, round($lateDays * $lateRate, 2)]);
+                        ->execute([$rentalId, $lateAmount]);
                 }
                 $pdo->commit();
                 flash('Return recorded. Vehicle mileage and availability were updated.');
@@ -260,18 +285,18 @@ function process_action(PDO $pdo): void
 
             case 'user_save':
                 require_admin();
-                $id = (int) ($_POST['user_id'] ?? 0);
+                $id = post_record_id('user_id');
                 $firstName = post_string('first_name', 50);
                 $middleName = post_string('middle_name', 50, false) ?: null;
                 $lastName = post_string('last_name', 50);
                 $sex = post_enum('sex', ['Male', 'Female', 'Other']);
-                $contact = post_string('contact_no', 20, false) ?: null;
+                $contact = post_phone('contact_no', false);
                 $email = post_email('email');
                 $role = post_enum('role', ['Admin', 'Staff']);
                 $username = post_string('username', 50);
                 $status = post_enum('user_status', ['Active', 'Inactive']);
                 $dateOfBirth = post_optional_date('date_of_birth');
-                $password = (string) ($_POST['password'] ?? '');
+                $password = post_password('password', $id === 0, 8);
                 if ($id > 0) {
                     $existingUserQuery = $pdo->prepare('SELECT role,user_status FROM tbl_user WHERE user_id=?');
                     $existingUserQuery->execute([$id]);
@@ -289,9 +314,6 @@ function process_action(PDO $pdo): void
                         }
                     }
                     if ($password !== '') {
-                        if (strlen($password) < 10) {
-                            throw new InvalidArgumentException('Passwords must be at least 10 characters.');
-                        }
                         $statement = $pdo->prepare('UPDATE tbl_user SET first_name=?,middle_name=?,last_name=?,sex=?,date_of_birth=?,contact_no=?,email=?,role=?,username=?,user_status=?,password=? WHERE user_id=?');
                         $statement->execute([$firstName,$middleName,$lastName,$sex,$dateOfBirth,$contact,$email,$role,$username,$status,password_hash($password, PASSWORD_DEFAULT),$id]);
                     } else {
@@ -312,9 +334,6 @@ function process_action(PDO $pdo): void
                         ]);
                     }
                 } else {
-                    if (strlen($password) < 10) {
-                        throw new InvalidArgumentException('Passwords must be at least 10 characters.');
-                    }
                     $statement = $pdo->prepare('INSERT INTO tbl_user (first_name,middle_name,last_name,sex,date_of_birth,contact_no,email,role,username,user_status,password) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
                     $statement->execute([$firstName,$middleName,$lastName,$sex,$dateOfBirth,$contact,$email,$role,$username,$status,password_hash($password, PASSWORD_DEFAULT)]);
                 }

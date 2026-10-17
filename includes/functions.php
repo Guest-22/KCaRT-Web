@@ -13,6 +13,13 @@ function redirect(string $page = 'dashboard', array $query = []): never
     exit;
 }
 
+function query_id(string $key): int
+{
+    $value = $_GET[$key] ?? null;
+    $id = filter_var($value, FILTER_VALIDATE_INT);
+    return $id === false || $id < 1 ? 0 : $id;
+}
+
 function current_user(): ?array
 {
     return $_SESSION['user'] ?? null;
@@ -81,6 +88,32 @@ function money(mixed $amount): string
     return '₱' . number_format((float) $amount, 2);
 }
 
+function chart_period(): array
+{
+    $rawOffset = $_GET['period'] ?? '0';
+    $requestedOffset = is_string($rawOffset) ? filter_var($rawOffset, FILTER_VALIDATE_INT) : false;
+    $offset = $requestedOffset === false ? 0 : min(0, max(-120, $requestedOffset));
+    $offset = (int) (floor($offset / 6) * 6);
+    $start = (new DateTimeImmutable('first day of this month'))->modify(($offset - 5) . ' months');
+    $end = $start->modify('+6 months');
+    return ['offset' => $offset, 'start' => $start, 'end' => $end];
+}
+
+function chart_period_controls(string $page, array $period): string
+{
+    $offset = (int) $period['offset'];
+    $start = $period['start'];
+    $end = $period['end']->modify('-1 month');
+    $range = $start->format('M Y') . ' – ' . $end->format('M Y');
+    $previous = $offset > -120
+        ? '<a class="button button-quiet button-small" href="index.php?' . e(http_build_query(['page' => $page, 'period' => $offset - 6])) . '" aria-label="Show previous six months">← Previous</a>'
+        : '<span class="button button-quiet button-small is-disabled" aria-disabled="true">← Previous</span>';
+    $next = $offset < 0
+        ? '<a class="button button-quiet button-small" href="index.php?' . e(http_build_query(['page' => $page, 'period' => $offset + 6])) . '" aria-label="Show next six months">Next →</a>'
+        : '<span class="button button-quiet button-small is-disabled" aria-disabled="true">Next →</span>';
+    return '<nav class="chart-period" aria-label="Chart date range">' . $previous . '<strong>' . e($range) . '</strong>' . $next . '</nav>';
+}
+
 function full_name(array $person): string
 {
     return trim(implode(' ', array_filter([
@@ -106,6 +139,18 @@ function post_string(string $key, int $maxLength = 255, bool $required = true): 
     return $value;
 }
 
+function post_password(string $key, bool $required = true, int $minimumLength = 0): string
+{
+    $value = $_POST[$key] ?? '';
+    if (!is_string($value) || ($required && $value === '') || strlen($value) > 72) {
+        throw new InvalidArgumentException('Enter a valid password.');
+    }
+    if ($value !== '' && mb_strlen($value) < $minimumLength) {
+        throw new InvalidArgumentException("Passwords must be at least {$minimumLength} characters.");
+    }
+    return $value;
+}
+
 function post_enum(string $key, array $allowed): string
 {
     $value = $_POST[$key] ?? '';
@@ -118,22 +163,51 @@ function post_enum(string $key, array $allowed): string
     return $value;
 }
 
-function post_int(string $key, int $minimum = 0): int
+function post_int(string $key, int $minimum = 0, int $maximum = PHP_INT_MAX): int
 {
     $value = filter_var($_POST[$key] ?? null, FILTER_VALIDATE_INT);
-    if ($value === false || $value < $minimum) {
+    if ($value === false || $value < $minimum || $value > $maximum) {
         throw new InvalidArgumentException('Please enter a valid number.');
+    }
+    return $value;
+}
+
+function post_record_id(string $key): int
+{
+    $value = $_POST[$key] ?? null;
+    if ($value === '0' || $value === 0) {
+        return 0;
+    }
+    return post_int($key, 1);
+}
+
+function post_phone(string $key, bool $required = true): ?string
+{
+    $value = post_string($key, 20, $required);
+    if ($value === '') {
+        return null;
+    }
+    if (!preg_match('/^\+?[0-9(). -]+$/', $value)) {
+        throw new InvalidArgumentException('Enter a valid contact number.');
+    }
+    $digits = preg_replace('/\D/', '', $value);
+    if ($digits === null || strlen($digits) < 7 || strlen($digits) > 15) {
+        throw new InvalidArgumentException('Contact numbers must contain 7 to 15 digits.');
     }
     return $value;
 }
 
 function post_amount(string $key, float $minimum = 0): float
 {
-    $value = filter_var($_POST[$key] ?? null, FILTER_VALIDATE_FLOAT);
-    if ($value === false || !is_finite((float) $value) || $value < $minimum) {
+    $rawValue = $_POST[$key] ?? null;
+    if (!is_string($rawValue) || !preg_match('/^(?:\d{1,8}(?:\.\d{1,2})?|\.\d{1,2})$/', $rawValue)) {
         throw new InvalidArgumentException('Please enter a valid amount.');
     }
-    return round((float) $value, 2);
+    $value = (float) $rawValue;
+    if (!is_finite($value) || $value < $minimum || $value > 99999999.99) {
+        throw new InvalidArgumentException('Please enter a valid amount.');
+    }
+    return round($value, 2);
 }
 
 function post_email(string $key, bool $required = false): ?string
@@ -165,6 +239,20 @@ function post_optional_date(string $key): ?string
     return $value;
 }
 
+function post_adult_date(string $key, int $minimumAge = 20): string
+{
+    $value = post_optional_date($key);
+    if ($value === null) {
+        throw new InvalidArgumentException('Enter the customer’s date of birth.');
+    }
+    $birthDate = new DateTimeImmutable($value);
+    $latestAllowedBirthDate = (new DateTimeImmutable('today'))->modify("-{$minimumAge} years");
+    if ($birthDate > $latestAllowedBirthDate) {
+        throw new InvalidArgumentException("Customers must be at least {$minimumAge} years old.");
+    }
+    return $value;
+}
+
 function post_date(string $key): string
 {
     $rawValue = $_POST[$key] ?? '';
@@ -182,10 +270,10 @@ function post_date(string $key): string
 function uploaded_blob(string $key): ?string
 {
     $file = $_FILES[$key] ?? null;
-    if (!$file || $file['error'] === UPLOAD_ERR_NO_FILE) {
+    if ($file === null || (is_array($file) && ($file['error'] ?? null) === UPLOAD_ERR_NO_FILE)) {
         return null;
     }
-    if ($file['error'] !== UPLOAD_ERR_OK || $file['size'] > 5 * 1024 * 1024) {
+    if (!is_array($file) || !isset($file['error'], $file['size'], $file['tmp_name']) || $file['error'] !== UPLOAD_ERR_OK || !is_int($file['size']) || $file['size'] > 5 * 1024 * 1024 || !is_string($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
         throw new InvalidArgumentException('Uploads must be no larger than 5 MB.');
     }
     $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);

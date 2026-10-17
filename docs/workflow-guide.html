@@ -61,7 +61,7 @@ li { margin: 0 0 7px; padding-left: 2px; }
     <p>This guide describes the current local Kcart Rentals application and the recommended end-to-end workflow for administrators and staff.</p>
     <div class="cover-note"><strong>Local deployment:</strong> PHP 8.1+, MySQL/MariaDB, and Apache on XAMPP. Business timezone is Asia/Manila; displayed money uses Philippine peso formatting.</div>
   </div>
-  <div class="footer">Updated 17 October 2026 · Internal setup and operating guide</div>
+  <div class="footer">Updated 17 October 2026 · Customer age, team password, access, reporting, and workflow guidance</div>
 </header>
 
 <section class="section first">
@@ -72,13 +72,14 @@ li { margin: 0 0 7px; padding-left: 2px; }
   <div class="cards">
     <div class="card"><h3>Operations</h3><p>Customer and fleet records support rental booking. Vehicle availability is updated as a reservation or rental changes state.</p></div>
     <div class="card"><h3>Billing</h3><p>Reservation, rental-balance, damage, and late-return invoices share a payment history. Partial payments retain the remaining balance.</p></div>
-    <div class="card"><h3>Monitoring</h3><p>Dashboard and Reports show current operating metrics, six-month collections, rental pipeline, fleet status, and customer activity.</p></div>
+    <div class="card"><h3>Monitoring</h3><p>Dashboard and Reports show current operating metrics and period-navigable six-month charts. Reports use line, pie, and column visualizations for collections, fleet availability, and rental outcomes.</p></div>
     <div class="card"><h3>Local context</h3><p>Sample customers use Bataan addresses. The app runs on Asia/Manila time and presents amounts in PHP.</p></div>
   </div>
   <h3>Reservation and return rules</h3>
   <ul>
     <li>Rental duration is charged in 24-hour days, with a one-day minimum and partial days rounded up.</li>
     <li>A configurable reservation fee must be paid before pickup. Pickup can be confirmed at the scheduled pickup time through one hour afterward.</li>
+    <li>Customers must be at least 20 years old. Date of birth is required and checked again by the server when the customer record is saved.</li>
     <li>After the grace period, uncollected reservations are dismissed and their vehicle is released. No automatic refund is issued.</li>
     <li>Overdue active rentals are marked Late. Return records mileage and condition, releases the car, and can create damage and configurable per-day late-fee invoices.</li>
   </ul>
@@ -90,7 +91,8 @@ li { margin: 0 0 7px; padding-left: 2px; }
   <table>
     <thead><tr><th>Capability</th><th>Admin</th><th>Staff</th></tr></thead>
     <tbody>
-      <tr><td>Dashboard, customer records, fleet, rentals, returns, billing</td><td>Allowed</td><td>Allowed</td></tr>
+      <tr><td>Dashboard, customer records, fleet viewing, rentals, returns, billing</td><td>Allowed</td><td>Allowed</td></tr>
+      <tr><td>Add/edit vehicles or change vehicle status</td><td>Allowed</td><td>Restricted</td></tr>
       <tr><td>Reports and CSV downloads</td><td>Allowed</td><td>Allowed</td></tr>
       <tr><td>Create, edit, deactivate team accounts and assign roles</td><td>Allowed</td><td>Restricted</td></tr>
       <tr><td>Change reservation and late-fee settings</td><td>Allowed</td><td>Restricted</td></tr>
@@ -104,28 +106,28 @@ li { margin: 0 0 7px; padding-left: 2px; }
   <p class="eyebrow">03 · ADMIN PLAYBOOK</p>
   <h2>Administrator: setup and daily operations</h2>
   <div class="step"><strong>1. Sign in.</strong> Open the local Kcart URL and use your Admin account. Confirm the Admin role is shown in the sidebar.</div>
-  <div class="step"><strong>2. Secure access.</strong> Open <em>Team &amp; access</em>, create a named account per team member, select Staff or Admin carefully, and issue a unique strong password. Deactivate accounts that no longer need access.</div>
+  <div class="step"><strong>2. Secure access.</strong> Open <em>Team &amp; access</em>, create a named account per team member, select Staff or Admin carefully, and issue a unique password of at least 8 characters. Deactivate accounts that no longer need access.</div>
   <div class="step"><strong>3. Configure billing.</strong> Open <em>Settings</em>. Set the reservation fee and late-return fee per day to approved business values. Confirm the one-hour pickup grace rule with staff.</div>
-  <div class="step"><strong>4. Prepare records.</strong> Add active customers with verified contact details and add vehicles with plate, specifications, mileage, daily rate, and current fleet status. Upload optional photos/IDs only with customer consent and appropriate handling.</div>
+  <div class="step"><strong>4. Prepare records.</strong> Add customers aged 20 or older with a verified date of birth and contact details. Add vehicles with plate, specifications, mileage, daily rate, and current fleet status. Upload optional photos/IDs only with customer consent and appropriate handling.</div>
   <div class="step"><strong>5. Create or oversee reservations.</strong> Select an active customer and available vehicle, choose pickup/return date and time, review the estimate, and save. The system reserves the car and creates the reservation-fee invoice.</div>
   <div class="step"><strong>6. Confirm payment and pickup.</strong> Verify the reservation invoice is paid before confirming pickup. The customer must arrive within the scheduled pickup time plus the one-hour grace period.</div>
   <div class="step"><strong>7. Process vehicle return.</strong> Record incoming mileage, vehicle condition, notes, and any approved damage charge. The system completes the rental, updates mileage, releases the vehicle, and creates eligible charge invoices.</div>
-  <div class="step"><strong>8. Reconcile and review.</strong> Check Billing for outstanding balances and payment history; use Dashboard and Reports for collection trends, fleet availability, rental states, customer rankings, and CSV exports.</div>
+  <div class="step"><strong>8. Reconcile and review.</strong> Check Billing for outstanding balances and payment history; use Dashboard and Reports for collection trends, fleet availability, rental states, customer rankings, and CSV exports. Reports offer line, pie, and column charts with previous/next six-month navigation.</div>
   <div class="step"><strong>9. Sign out.</strong> Use the visible <em>Log out</em> button in the account area after each shared-device session.</div>
 </section>
 
 <section class="section">
   <p class="eyebrow">04 · STAFF PLAYBOOK</p>
   <h2>Staff: reservation through return</h2>
-  <div class="step"><strong>1. Sign in with your Staff account.</strong> Confirm the Staff role is shown. Team &amp; access and Settings are intentionally unavailable.</div>
-  <div class="step"><strong>2. Find or register the renter.</strong> Search Customers first. If the record is missing, add the customer and enter accurate contact details. Upload images only when needed and authorized.</div>
-  <div class="step"><strong>3. Check the fleet.</strong> Open Vehicle fleet and confirm the selected vehicle is Available. Check its rate, mileage, and details before promising it.</div>
+  <div class="step"><strong>1. Sign in with your Staff account.</strong> Confirm the Staff role is shown. Team &amp; access, Settings, and vehicle add/edit/status controls are restricted to Admin.</div>
+  <div class="step"><strong>2. Find or register the renter.</strong> Search Customers first. If the record is missing, enter a date of birth confirming the customer is at least 20 and provide accurate contact details. Upload images only when needed and authorized.</div>
+  <div class="step"><strong>3. Check the fleet.</strong> Open the read-only Vehicle fleet, search by vehicle type or other details, and use Previous/Next to browse cards (12 vehicles per page). Confirm the selected vehicle is Available and check its rate and details before promising it.</div>
   <div class="step"><strong>4. Make the reservation.</strong> From Dashboard or Rentals, choose the active customer, available vehicle, pickup and expected-return time. Review the calculated day-based estimate and create the reservation.</div>
   <div class="step"><strong>5. Collect the reservation fee.</strong> Open the generated invoice in Billing, select the actual payment method, enter any reference, record the amount, and verify the invoice status/balance. Never record a payment that was not actually received.</div>
   <div class="step"><strong>6. Handover the car.</strong> Open the rental and confirm pickup only after the reservation invoice is Paid and arrival is inside the pickup window. The rental becomes Active and the vehicle becomes Rented.</div>
   <div class="step"><strong>7. Check in the car.</strong> At return, open Returns, choose the open rental, enter the odometer reading, inspect and select the condition, add factual notes, and enter only approved damage charges. Complete the return.</div>
   <div class="step"><strong>8. Close out billing.</strong> Review the rental’s invoices. Collect final balance, damage, or late-fee amounts as applicable; partial payments are supported. Give the customer the printed invoice/receipt where needed.</div>
-  <div class="step"><strong>9. Review and sign out.</strong> Use Reports for operating summaries and permitted CSVs. Click <em>Log out</em> before leaving the workstation.</div>
+  <div class="step"><strong>9. Review and sign out.</strong> Use Reports for line, pie, and column chart summaries; navigate across six-month periods as needed and download permitted CSVs. Click <em>Log out</em> before leaving the workstation.</div>
 </section>
 
 <section class="section">
@@ -146,6 +148,8 @@ li { margin: 0 0 7px; padding-left: 2px; }
   <ul>
     <li>The local database contains synthetic Bataan customer, vehicle, rental, return, invoice, and payment records to exercise dashboards and workflows. These are fictional test records.</li>
     <li>Local demo logins are <span class="path">admin</span> and <span class="path">staff</span>; their passwords match their usernames. Change both immediately before using real records, sharing access, or exposing the server beyond localhost.</li>
+    <li>New team passwords and password changes must be at least 8 characters. Customer date of birth is required, and customers younger than 20 cannot be saved.</li>
+    <li>Staff can view and search the fleet but cannot add/edit vehicles or change vehicle status; those controls are Admin-only.</li>
     <li>Use unique named accounts and strong passwords, schedule database backups, and test restoration. Restrict phpMyAdmin and MySQL access to trusted administrators.</li>
     <li>Before production, define written rules for deposits/refunds, damage assessment, payment reconciliation, document retention, privacy/consent, and late-fee disputes. The current system does not automatically refund a dismissed reservation.</li>
     <li>Run <span class="path">maintenance.php</span> through Windows Task Scheduler every five minutes if no-show and late statuses must update when the site is idle.</li>

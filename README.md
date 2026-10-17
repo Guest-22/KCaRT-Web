@@ -13,8 +13,8 @@ A local car-rental operations app built with PHP 8.1+, MySQL/MariaDB, HTML, CSS,
 
 ## Roles and access
 
-- **Admin:** full workspace access, including team accounts and system settings.
-- **Staff:** day-to-day dashboard, customer, fleet, rental, return, billing, and report access. Team management and system settings are restricted to Admin.
+- **Admin:** full workspace access, including team accounts, system settings, and vehicle add/edit/status controls.
+- **Staff:** day-to-day dashboard, customer, read-only fleet, rental, return, billing, and report access. Team management, system settings, and vehicle management actions are restricted to Admin.
 
 Access is checked server-side, so hiding the management links for Staff is not the only restriction.
 
@@ -42,26 +42,27 @@ The requested test accounts exist only in the current local database and are not
 
 The local test database is populated with fictional customers from Bataan municipalities, sample vehicles, and reservations/rentals across pending, active, late, and completed states. The records are synthetic and should not be treated as real customer or payment information.
 
-## Updated operating guide
+## Operating guide
 
-See [CRMS_Overall.pdf](./CRMS_Overall.pdf) for role-based Admin and Staff procedures, the end-to-end rental workflow, and instructions for replacing the logo and customer/vehicle images. The editable source is `docs/workflow-guide.html`; the previous base document is preserved as `CRMS_Overall_Source.pdf`.
+See the [System Workflow Guide](./docs/workflow-guide.html) for the current role-based Admin and Staff procedures, end-to-end rental workflow, reporting charts, validation rules, and instructions for replacing the logo and customer/vehicle images. Open the HTML file in a browser to read it or print it to PDF.
 
 The replaceable app logo is `assets/images/logo.svg`. Customer and vehicle photos are validated uploads stored in MySQL (`tbl_customer` and `tbl_car` image columns), not loose files under the project folder.
 
 ## Included workflows
 
 - Customer directory, customer photo, driver's license and secondary-ID image uploads.
-- Vehicle fleet, daily rates, mileage, fleet status, and vehicle photos.
-- Reservations with day-based rental pricing and a configurable reservation fee; reservation invoices must be paid before pickup.
+- Customer date of birth is required; the server rejects customers who are younger than 20.
+- Vehicle fleet, daily rates, mileage, fleet status, and vehicle photos. Vehicle search includes vehicle type, and fleet cards are paged 12 at a time.
+- Reservations with day-based rental pricing and a configurable reservation fee; reservation invoices must be paid before pickup. Only active customers can be selected, with the active status rechecked when saving.
 - Pickup activation with a one-hour grace period, late rental tracking, no-show release, and return processing.
 - Damage invoices and configurable per-day late charges created at return.
 - Invoice and receipt views, printable statements, full or partial payments, and balance tracking.
-- Admin/staff accounts, role-restricted settings and user administration, operational dashboard, CSV exports, and reports.
+- Admin/staff accounts, role-restricted settings and user administration, operational dashboard, CSV exports, and reports. New or changed team passwords require at least 8 characters.
 - Local business context: Bataan, Philippines, using Asia/Manila time and PHP currency formatting.
-- Dashboard and reports include six-month collection charts, rental-status charts, fleet-availability charts, and summary metrics.
+- Dashboard and reports include six-month collection, rental-outcome, and fleet-availability charts with previous/next six-month navigation. Reports use line, pie, and column charts.
 - Searchable directory/list lookups are available for customers, vehicles, rentals, returns, invoices, and (for Admins) team accounts; existing status filters can be combined with search.
 
-No-show reservations are dismissed and the car is released; the app does not automatically refund a paid reservation invoice. The PDF does not specify a refund policy.
+No-show reservations are dismissed and the car is released; the app does not automatically refund a paid reservation invoice. The source specification does not specify a refund policy.
 
 ## Automatic status maintenance
 

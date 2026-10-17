@@ -20,12 +20,12 @@
             <?php
             $navigation = [
                 'dashboard' => ['Overview', '⌂'],
-                'rentals' => ['Rentals', '↗'],
-                'returns' => ['Returns', '↙'],
                 'customers' => ['Customers', '◎'],
-                'vehicles' => ['Vehicle fleet', '▰'],
-                'billing' => ['Billing', '₱'],
-                'reports' => ['Reports', '▤'],
+                'rentals'   => ['Rentals', '↗'],
+                'returns'   => ['Returns', '↙'],
+                'vehicles'  => ['Vehicle fleet', '▰'],
+                'billing'   => ['Billing', '₱'],
+                'reports'   => ['Reports', '▤'],
             ];
             foreach ($navigation as $key => [$label, $icon]):
             ?>

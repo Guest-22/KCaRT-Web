@@ -1,5 +1,5 @@
 <?php
-$invoiceId = (int) ($_GET['invoice_id'] ?? 0);
+$invoiceId = query_id('invoice_id');
 $baseQuery = "SELECT i.*,r.rental_id,r.total_amount,c.first_name,c.last_name,v.plate_no,COALESCE(SUM(p.pay_amount),0) AS paid FROM tbl_invoice i JOIN tbl_rental r ON r.rental_id=i.rental_id JOIN tbl_customer c ON c.customer_id=r.customer_id JOIN tbl_car v ON v.car_id=r.car_id LEFT JOIN tbl_payment p ON p.invoice_id=i.invoice_id";
 if ($invoiceId > 0) {
     $statement = $pdo->prepare($baseQuery . ' WHERE i.invoice_id=? GROUP BY i.invoice_id');

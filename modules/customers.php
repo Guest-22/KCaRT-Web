@@ -1,5 +1,5 @@
 <?php
-$editId = (int) ($_GET['edit'] ?? 0);
+$editId = query_id('edit');
 $editing = null;
 if ($editId > 0) {
     $statement = $pdo->prepare('SELECT * FROM tbl_customer WHERE customer_id=?');
@@ -18,18 +18,18 @@ if ($query !== '') {
 $customerCount = (int) $pdo->query('SELECT COUNT(*) FROM tbl_customer')->fetchColumn();
 $customerForm = $editing || isset($_GET['new']);
 ?>
-<div class="page-heading"><div><p class="eyebrow">PEOPLE FIRST</p><h1>Customers</h1><p class="heading-copy">Keep renter details and documents in one place.</p></div><a class="button button-primary" href="index.php?page=customers&new=1">＋ Add customer</a></div>
+<div class="page-heading"><div><p class="eyebrow">PEOPLE FIRST</p><h1>Customers</h1><p class="heading-copy">Keep renter details and documents in one place.</p></div><?php if (!$customerForm): ?><a class="button button-primary" href="index.php?page=customers&new=1">＋ Add customer</a><?php endif; ?></div>
 <?php if ($customerForm): ?>
 <section class="panel form-panel">
-    <div class="panel-heading"><div><h2><?= $editing ? 'Edit customer' : 'New customer' ?></h2><p>Fields marked with <span class="required">*</span> are required.</p></div><a class="button button-quiet button-small" href="index.php?page=customers">Cancel</a></div>
+    <div class="panel-heading"><div><h2><?= $editing ? 'Edit customer' : 'New customer' ?></h2><p>Customers must be at least 20 years old. Fields marked with <span class="required">*</span> are required.</p></div></div>
     <form method="post" enctype="multipart/form-data" class="form-grid">
         <?= csrf_field() ?><input type="hidden" name="action" value="customer_save"><input type="hidden" name="customer_id" value="<?= (int) ($editing['customer_id'] ?? 0) ?>">
         <label>First name <span class="required">*</span><input name="first_name" maxlength="50" required value="<?= e($editing['first_name'] ?? '') ?>"></label>
         <label>Middle name<input name="middle_name" maxlength="50" value="<?= e($editing['middle_name'] ?? '') ?>"></label>
         <label>Last name <span class="required">*</span><input name="last_name" maxlength="50" required value="<?= e($editing['last_name'] ?? '') ?>"></label>
         <label>Sex <span class="required">*</span><select name="sex" required><option value="">Select</option><?php foreach (['Male','Female','Other'] as $option): ?><option <?= ($editing['sex'] ?? '') === $option ? 'selected' : '' ?>><?= e($option) ?></option><?php endforeach; ?></select></label>
-        <label>Date of birth<input type="date" name="date_of_birth" value="<?= e($editing['date_of_birth'] ?? '') ?>"></label>
-        <label>Contact number <span class="required">*</span><input name="contact_no" maxlength="20" required value="<?= e($editing['contact_no'] ?? '') ?>"></label>
+        <label>Date of birth <span class="required">*</span><input type="date" name="date_of_birth" max="<?= e(date('Y-m-d', strtotime('-20 years'))) ?>" required value="<?= e($editing['date_of_birth'] ?? '') ?>"></label>
+        <label>Contact number <span class="required">*</span><input type="tel" name="contact_no" maxlength="20" required value="<?= e($editing['contact_no'] ?? '') ?>"></label>
         <label>Email address<input type="email" name="email" maxlength="100" value="<?= e($editing['email'] ?? '') ?>"></label>
         <label>Customer status<select name="customer_status"><option <?= ($editing['customer_status'] ?? 'Active') === 'Active' ? 'selected' : '' ?>>Active</option><option <?= ($editing['customer_status'] ?? '') === 'Inactive' ? 'selected' : '' ?>>Inactive</option></select></label>
         <label class="span-two">Address<input name="address" maxlength="255" value="<?= e($editing['address'] ?? '') ?>"></label>

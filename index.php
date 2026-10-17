@@ -88,7 +88,7 @@ if (isset($_GET['image'], $_GET['id'])) {
 }
 
 if ($page === 'reports' && isset($_GET['export'])) {
-    $export = (string) $_GET['export'];
+    $export = is_string($_GET['export']) ? $_GET['export'] : '';
     if ($export === 'rentals') {
         $rows = $pdo->query('SELECT r.rental_id, c.first_name, c.last_name, v.plate_no, r.start_date, r.expected_return_date, r.rental_status, r.total_amount FROM tbl_rental r JOIN tbl_customer c ON c.customer_id=r.customer_id JOIN tbl_car v ON v.car_id=r.car_id ORDER BY r.created_at DESC')->fetchAll();
         $filename = 'rental-report.csv';
