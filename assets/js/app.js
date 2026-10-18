@@ -161,3 +161,15 @@ document.querySelectorAll('[data-search-picker]').forEach((picker) => {
         if (event.target instanceof Node && !picker.contains(event.target)) close();
     });
 });
+
+document.querySelectorAll('form[data-password-form]').forEach((form) => {
+    const password = form.querySelector('[data-password-source]');
+    const confirmation = form.querySelector('[data-password-confirm]');
+    if (!(password instanceof HTMLInputElement) || !(confirmation instanceof HTMLInputElement)) return;
+    const validateConfirmation = () => {
+        confirmation.setCustomValidity(password.value === confirmation.value ? '' : 'Passwords do not match.');
+    };
+    password.addEventListener('input', validateConfirmation);
+    confirmation.addEventListener('input', validateConfirmation);
+    form.addEventListener('submit', validateConfirmation);
+});

@@ -46,8 +46,8 @@ function process_action(PDO $pdo): void
                     post_enum('sex', ['Male', 'Female', 'Other']),
                     post_adult_date('date_of_birth', 20),
                     post_phone('contact_no'),
-                    post_email('email'),
-                    post_string('address', 255, false) ?: null,
+                    post_email('email', true),
+                    post_string('address', 255) ?: null,
                     post_enum('customer_status', ['Active', 'Inactive']),
                 ];
                 if ($id > 0) {
@@ -62,7 +62,26 @@ function process_action(PDO $pdo): void
                     'secondary_id' => uploaded_blob('secondary_id'),
                     'customer_photo' => uploaded_blob('customer_photo'),
                 ];
+                if ($id === 0) {
+                    foreach (['customer_photo' => 'Customer photo', 'driver_license' => "Driver's license", 'secondary_id' => 'Secondary ID'] as $field => $label) {
+                        if ($uploads[$field] === null) {
+                            throw new InvalidArgumentException("Upload the required {$label}.");
+                        }
+                    }
+                }
                 if ($id > 0) {
+                    $existingDocuments = $pdo->prepare('SELECT customer_photo IS NOT NULL AS has_customer_photo,driver_license IS NOT NULL AS has_driver_license,secondary_id IS NOT NULL AS has_secondary_id FROM tbl_customer WHERE customer_id=?');
+                    $existingDocuments->execute([$id]);
+                    $savedDocuments = $existingDocuments->fetch();
+                    foreach ([
+                        'customer_photo' => ['Customer photo', 'has_customer_photo'],
+                        'driver_license' => ["Driver's license", 'has_driver_license'],
+                        'secondary_id' => ['Secondary ID', 'has_secondary_id'],
+                    ] as $field => [$label, $savedField]) {
+                        if ($uploads[$field] === null && empty($savedDocuments[$savedField])) {
+                            throw new InvalidArgumentException("Upload the required {$label}.");
+                        }
+                    }
                     $statement = $pdo->prepare('UPDATE tbl_customer SET first_name=?, middle_name=?, last_name=?, sex=?, date_of_birth=?, contact_no=?, email=?, address=?, customer_status=? WHERE customer_id=?');
                     $statement->execute([...$values, $id]);
                     foreach ($uploads as $column => $blob) {
@@ -290,13 +309,20 @@ function process_action(PDO $pdo): void
                 $middleName = post_string('middle_name', 50, false) ?: null;
                 $lastName = post_string('last_name', 50);
                 $sex = post_enum('sex', ['Male', 'Female', 'Other']);
-                $contact = post_phone('contact_no', false);
-                $email = post_email('email');
+                $contact = post_phone('contact_no');
+                $email = post_email('email', true);
                 $role = post_enum('role', ['Admin', 'Staff']);
                 $username = post_string('username', 50);
                 $status = post_enum('user_status', ['Active', 'Inactive']);
                 $dateOfBirth = post_optional_date('date_of_birth');
+                if ($dateOfBirth === null) {
+                    throw new InvalidArgumentException('Enter the team member’s date of birth.');
+                }
                 $password = post_password('password', $id === 0, 8);
+                $confirmPassword = post_password('confirm_password', $id === 0, 8);
+                if ($password !== $confirmPassword) {
+                    throw new InvalidArgumentException('Password and confirm password must match.');
+                }
                 if ($id > 0) {
                     $existingUserQuery = $pdo->prepare('SELECT role,user_status FROM tbl_user WHERE user_id=?');
                     $existingUserQuery->execute([$id]);
