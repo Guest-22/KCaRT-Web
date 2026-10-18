@@ -372,7 +372,7 @@ function process_action(PDO $pdo): void
             'settings_save' => 'settings',
             default => 'dashboard',
         };
-        redirect($returnPage);
+        redirect($returnPage, $action === 'rental_save' ? ['new' => 1] : []);
     } catch (PDOException $exception) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
@@ -393,6 +393,6 @@ function process_action(PDO $pdo): void
             'settings_save' => 'settings',
             default => 'dashboard',
         };
-        redirect($returnPage);
+        redirect($returnPage, $action === 'rental_save' ? ['new' => 1] : []);
     }
 }

@@ -40,7 +40,7 @@ if (rentalForm) {
     const end = rentalForm.querySelector('[name="expected_return_date"]');
     const estimate = rentalForm.querySelector('[data-rental-estimate]');
     const updateEstimate = () => {
-        const rate = Number(car?.selectedOptions[0]?.dataset.rate || 0);
+        const rate = Number(car?.dataset.rate || 0);
         const startTime = start?.value ? new Date(start.value).getTime() : 0;
         const endTime = end?.value ? new Date(end.value).getTime() : 0;
         if (!rate || !startTime || !endTime || endTime <= startTime) {
@@ -54,3 +54,110 @@ if (rentalForm) {
     start?.addEventListener('input', updateEstimate);
     end?.addEventListener('input', updateEstimate);
 }
+
+document.querySelectorAll('[data-search-picker]').forEach((picker) => {
+    const input = picker.querySelector('[data-picker-input]');
+    const value = picker.querySelector('[data-picker-value]');
+    const list = picker.querySelector('[role="listbox"]');
+    const options = [...picker.querySelectorAll('.search-picker-option')];
+    const empty = picker.querySelector('.search-picker-empty');
+    if (!(input instanceof HTMLInputElement) || !(value instanceof HTMLInputElement) || !(list instanceof HTMLElement)) return;
+    options.forEach((option, index) => {
+        if (!option.id) option.id = `${list.id || 'search-picker'}-option-${index}`;
+    });
+
+    let activeIndex = -1;
+    const matches = () => options.filter((option) => !option.hidden);
+    const close = () => {
+        list.hidden = true;
+        picker.classList.remove('is-open');
+        input.setAttribute('aria-expanded', 'false');
+        input.removeAttribute('aria-activedescendant');
+        options.forEach((option) => option.classList.remove('is-active'));
+        activeIndex = -1;
+    };
+    const open = () => {
+        list.hidden = false;
+        picker.classList.add('is-open');
+        input.setAttribute('aria-expanded', 'true');
+    };
+    const filter = (invalidateSelection = true) => {
+        const query = input.value.trim().toLocaleLowerCase();
+        const filtered = options.filter((option) => (option.dataset.search || option.dataset.label || '').toLocaleLowerCase().includes(query));
+        options.forEach((option) => {
+            option.hidden = !filtered.includes(option);
+            option.classList.remove('is-active');
+            option.setAttribute('aria-selected', option.dataset.value === value.value && value.value ? 'true' : 'false');
+        });
+        if (empty) empty.hidden = filtered.length > 0;
+        activeIndex = -1;
+        input.removeAttribute('aria-activedescendant');
+        if (invalidateSelection) {
+            value.value = '';
+            delete input.dataset.rate;
+            input.setCustomValidity(input.value ? 'Choose an item from the suggestions.' : '');
+        }
+        open();
+        if (invalidateSelection && input.matches('[data-car-rate]')) input.dispatchEvent(new Event('change'));
+    };
+    const select = (option) => {
+        input.value = option.dataset.label || option.textContent.trim();
+        value.value = option.dataset.value || '';
+        input.dataset.rate = option.dataset.rate || '';
+        input.setCustomValidity('');
+        options.forEach((item) => {
+            item.setAttribute('aria-selected', item === option ? 'true' : 'false');
+            item.classList.remove('is-active');
+        });
+        close();
+        if (input.matches('[data-car-rate]')) input.dispatchEvent(new Event('change'));
+    };
+    const setActive = (index) => {
+        const filtered = matches();
+        if (!filtered.length) return;
+        activeIndex = (index + filtered.length) % filtered.length;
+        options.forEach((option) => option.classList.remove('is-active'));
+        const option = filtered[activeIndex];
+        option.classList.add('is-active');
+        input.setAttribute('aria-activedescendant', option.id);
+        option.scrollIntoView({ block: 'nearest' });
+    };
+
+    input.addEventListener('focus', () => {
+        filter(false);
+    });
+    input.addEventListener('input', () => filter());
+    input.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            if (list.hidden) filter(false);
+            setActive(activeIndex + 1);
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (list.hidden) filter(false);
+            setActive(activeIndex < 0 ? matches().length - 1 : activeIndex - 1);
+        } else if (event.key === 'Enter' && !list.hidden && activeIndex >= 0) {
+            event.preventDefault();
+            select(matches()[activeIndex]);
+        } else if (event.key === 'Escape') {
+            close();
+        }
+    });
+    list.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        const option = target.closest('.search-picker-option');
+        if (option instanceof HTMLButtonElement) select(option);
+    });
+    list.addEventListener('mousedown', (event) => event.preventDefault());
+    input.form?.addEventListener('submit', (event) => {
+        if (!value.value) {
+            input.setCustomValidity('Choose an item from the suggestions.');
+            input.reportValidity();
+            event.preventDefault();
+        }
+    });
+    document.addEventListener('click', (event) => {
+        if (event.target instanceof Node && !picker.contains(event.target)) close();
+    });
+});

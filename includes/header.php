@@ -7,7 +7,7 @@
     <script>
         document.documentElement.dataset.theme = localStorage.getItem('kcart-theme') === 'dark' ? 'dark' : 'light';
     </script>
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/style.css?v=<?= (int) filemtime(__DIR__ . '/../assets/css/style.css') ?>">
     <link rel="icon" type="image/svg+xml" href="assets/images/logo.svg">
 </head>
 <body class="<?= $page === 'login' ? 'login-page' : '' ?>">

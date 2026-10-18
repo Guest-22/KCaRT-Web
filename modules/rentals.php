@@ -45,7 +45,7 @@ if ($rentalId > 0) {
     $statement = $pdo->prepare('SELECT r.*,c.first_name,c.last_name,v.brand,v.model,v.plate_no FROM tbl_rental r JOIN tbl_customer c ON c.customer_id=r.customer_id JOIN tbl_car v ON v.car_id=r.car_id' . ($conditions ? ' WHERE ' . implode(' AND ', $conditions) : '') . ' ORDER BY r.created_at DESC');
     $statement->execute($parameters);
     $rentals = $statement->fetchAll();
-    $customers = $pdo->query("SELECT customer_id,first_name,last_name FROM tbl_customer WHERE customer_status='Active' ORDER BY last_name,first_name")->fetchAll();
+    $customers = $pdo->query("SELECT customer_id,first_name,last_name,contact_no FROM tbl_customer WHERE customer_status='Active' ORDER BY last_name,first_name")->fetchAll();
     $cars = $pdo->query("SELECT car_id,plate_no,brand,model,daily_rate FROM tbl_car WHERE car_status='Available' ORDER BY brand,model")->fetchAll();
     ?>
     <div class="page-heading"><div><p class="eyebrow">RESERVATIONS & ACTIVE RENTALS</p><h1>Rentals</h1><p class="heading-copy">Reserve vehicles, confirm pickups, and follow rental status.</p></div><?php if (!$newRental): ?><a class="button button-primary" href="index.php?page=rentals&new=1">＋ New reservation</a><?php endif; ?></div>
@@ -53,8 +53,33 @@ if ($rentalId > 0) {
     <section class="panel form-panel"><div class="panel-heading"><div><h2>Create a reservation</h2><p>The reservation invoice will be created automatically.</p></div></div>
     <?php if (!$customers || !$cars): ?><div class="alert alert-error">You need at least one active customer and one available vehicle to create a reservation.</div><?php else: ?>
     <form method="post" class="form-grid" data-rental-form><?= csrf_field() ?><input type="hidden" name="action" value="rental_save">
-        <label>Customer <span class="required">*</span><select name="customer_id" required><option value="">Select a customer</option><?php foreach ($customers as $customer): ?><option value="<?= (int) $customer['customer_id'] ?>"><?= e($customer['last_name'] . ', ' . $customer['first_name']) ?></option><?php endforeach; ?></select><a class="field-link" href="index.php?page=customers&new=1">＋ Add customer</a></label>
-        <label>Available vehicle <span class="required">*</span><select name="car_id" required data-car-rate><option value="">Select a vehicle</option><?php foreach ($cars as $car): ?><option value="<?= (int) $car['car_id'] ?>" data-rate="<?= e($car['daily_rate']) ?>"><?= e($car['brand'] . ' ' . $car['model'] . ' · ' . $car['plate_no'] . ' · ' . money($car['daily_rate']) . '/day') ?></option><?php endforeach; ?></select></label>
+        <div class="form-field">
+            <label for="reservation-customer-search">Customer <span class="required">*</span></label>
+            <span class="search-picker is-open" data-search-picker>
+                <input id="reservation-customer-search" type="search" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="reservation-customer-options" aria-required="true" autocomplete="off" placeholder="Search active customers" required data-picker-input>
+                <input type="hidden" name="customer_id" data-picker-value>
+                <span class="search-picker-options" id="reservation-customer-options" role="listbox">
+                    <?php foreach ($customers as $customer): $customerLabel = $customer['last_name'] . ', ' . $customer['first_name'] . ' · ' . $customer['contact_no'] . ' · #' . $customer['customer_id']; ?>
+                    <button type="button" class="search-picker-option" id="reservation-customer-options-<?= (int) $customer['customer_id'] ?>" role="option" aria-selected="false" data-value="<?= (int) $customer['customer_id'] ?>" data-label="<?= e($customerLabel) ?>" data-search="<?= e($customerLabel) ?>"><?= e($customerLabel) ?></button>
+                    <?php endforeach; ?>
+                    <span class="search-picker-empty" role="status" hidden>No active customer matches your search.</span>
+                </span>
+            </span>
+            <a class="field-link" href="index.php?page=customers&new=1">＋ Add customer</a>
+        </div>
+        <div class="form-field">
+            <label for="reservation-vehicle-search">Available vehicle <span class="required">*</span></label>
+            <span class="search-picker is-open" data-search-picker>
+                <input id="reservation-vehicle-search" type="search" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="reservation-vehicle-options" aria-required="true" autocomplete="off" placeholder="Search available vehicles" required data-picker-input data-car-rate>
+                <input type="hidden" name="car_id" data-picker-value>
+                <span class="search-picker-options" id="reservation-vehicle-options" role="listbox">
+                    <?php foreach ($cars as $car): $carLabel = $car['brand'] . ' ' . $car['model'] . ' · ' . $car['plate_no'] . ' · ' . money($car['daily_rate']) . '/day'; ?>
+                    <button type="button" class="search-picker-option" id="reservation-vehicle-options-<?= (int) $car['car_id'] ?>" role="option" aria-selected="false" data-value="<?= (int) $car['car_id'] ?>" data-label="<?= e($carLabel) ?>" data-search="<?= e($carLabel) ?>" data-rate="<?= e($car['daily_rate']) ?>"><?= e($carLabel) ?></button>
+                    <?php endforeach; ?>
+                    <span class="search-picker-empty" role="status" hidden>No available vehicle matches your search.</span>
+                </span>
+            </span>
+        </div>
         <label>Pickup date & time <span class="required">*</span><input type="datetime-local" name="start_date" required min="<?= e(date('Y-m-d\TH:i')) ?>"></label>
         <label>Expected return <span class="required">*</span><input type="datetime-local" name="expected_return_date" required></label>
         <div class="estimate-card span-two"><span>Estimated rental total</span><strong data-rental-estimate>Choose a vehicle and rental dates</strong><small>Charged by 24-hour rental day, with a one-day minimum.</small></div>

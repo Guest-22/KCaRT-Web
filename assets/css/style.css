@@ -10,6 +10,7 @@
     --navy: #152b34;
     --radius: 14px;
     --shadow: 0 10px 34px rgba(23, 42, 53, .045);
+    color-scheme: light;
     font-family: "Segoe UI", Arial, sans-serif;
     color: var(--ink);
     background: var(--canvas);
@@ -23,6 +24,7 @@ a { color: inherit; text-decoration: none; }
 button, input, select { font: inherit; }
 button, a, select { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
+option { background: #fff; color: #344a52; }
 
 .app-shell { min-height: 100vh; }
 .sidebar { position: fixed; inset: 0 auto 0 0; z-index: 5; display: flex; width: 250px; height: 100vh; height: 100dvh; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; padding: 27px 17px 14px; background: var(--paper); border-right: 1px solid var(--line); }
@@ -164,9 +166,18 @@ tbody tr:hover { background: #fcfdfd; }
 .form-panel { padding-bottom: 2px; }
 .form-panel .panel-heading { border-bottom: 1px solid #edf0f0; }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 18px; padding: 20px 22px; }
-.form-grid > label, .login-form label { display: grid; gap: 7px; color: #586970; font-size: 11px; font-weight: 600; }
+.form-grid > label, .form-grid > .form-field, .login-form label { display: grid; gap: 7px; color: #586970; font-size: 11px; font-weight: 600; }
+.form-field > label { display: block; }
 .form-grid input, .form-grid select, .login-form input { width: 100%; height: 39px; padding: 0 11px; border: 1px solid #e1e7e8; border-radius: 7px; outline: 0; background: #fff; color: #344a52; font-size: 11px; }
 .form-grid input:focus, .form-grid select:focus, .login-form input:focus { border-color: #82b9ab; box-shadow: 0 0 0 3px rgba(20,125,112,.08); }
+.search-picker { display: block; }
+.search-picker-options { display: grid; max-height: 230px; overflow-y: auto; padding: 5px; border: 1px solid #e1e7e8; border-top: 0; border-radius: 0 0 7px 7px; background: #fff; }
+.search-picker-options[hidden], .search-picker-option[hidden], .search-picker-empty[hidden] { display: none; }
+.search-picker-option { width: 100%; padding: 9px 10px; border: 0; border-radius: 5px; background: transparent; color: var(--ink); text-align: left; font-size: 11px; }
+.search-picker-option:hover, .search-picker-option.is-active { background: var(--green-light); color: var(--green-dark); }
+.search-picker-empty { padding: 9px 10px; color: var(--muted); font-size: 11px; }
+.search-picker.is-open [data-picker-input] { border-bottom-color: transparent; border-bottom-right-radius: 0; border-bottom-left-radius: 0; }
+.search-picker:not(.is-open) .search-picker-options { display: none; }
 .form-grid input[type=file] { height: auto; min-height: 39px; padding: 8px; color: #79868c; font-size: 10px; }
 .form-grid input:disabled { background: #f7f9f9; color: #87949a; }
 .required { color: #ce7668; }
@@ -183,7 +194,7 @@ tbody tr:hover { background: #fcfdfd; }
 .vehicle-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 15px; padding: 0 17px 18px; }
 .vehicle-card { overflow: hidden; border: 1px solid #e9eeee; border-radius: 11px; background: #fff; }
 .vehicle-image { position: relative; display: grid; height: 150px; place-items: center; overflow: hidden; background: linear-gradient(140deg,#f2f6f5,#e9efee); }
-.vehicle-image > img { width: 100%; height: 100%; object-fit: cover; }
+.vehicle-image > img { width: 100%; height: 100%; padding: 10px; object-fit: contain; }
 .vehicle-placeholder { color: #9aaba7; font-size: 43px; }
 .vehicle-status { position: absolute; top: 10px; right: 10px; }
 .vehicle-info { padding: 13px 13px 12px; }
@@ -198,6 +209,9 @@ tbody tr:hover { background: #fcfdfd; }
 .inline-form { display: flex; align-items: center; gap: 5px; }
 .inline-form select { max-width: 93px; height: 28px; padding: 0 5px; border: 1px solid #e6ebeb; border-radius: 6px; background: #fff; color: #738189; font-size: 9px; }
 .inline-form .text-link { border: 0; background: transparent; font-size: 9px; }
+.vehicle-workflow-status { display: grid; justify-items: end; gap: 4px; }
+.vehicle-workflow-status > small { color: var(--muted); font-size: 9px; }
+.inline-form select:disabled { cursor: not-allowed; opacity: 1; }
 .vehicle-empty { grid-column: 1/-1; }
 .pagination, .chart-period { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 0 17px 18px; }
 .pagination > strong, .chart-period > strong { color: var(--muted); font-size: 11px; font-weight: 600; }
@@ -499,6 +513,7 @@ html[data-theme="dark"] .settings-note strong,
 html[data-theme="dark"] .report-metric > strong,
 html[data-theme="dark"] .fleet-row > strong,
 html[data-theme="dark"] .form-grid > label,
+html[data-theme="dark"] .form-field > label,
 html[data-theme="dark"] .login-form label,
 html[data-theme="dark"] .form-divider { color: var(--ink); }
 html[data-theme="dark"] .nav-link { color: #b0bec2; }
@@ -520,12 +535,19 @@ html[data-theme="dark"] .theme-toggle,
 html[data-theme="dark"] .logout-button,
 html[data-theme="dark"] .button-secondary,
 html[data-theme="dark"] .search-form input,
+html[data-theme="dark"] .search-form select,
 html[data-theme="dark"] .filter-form select,
 html[data-theme="dark"] .inline-form select,
 html[data-theme="dark"] .form-grid input,
 html[data-theme="dark"] .form-grid select,
 html[data-theme="dark"] .login-form input,
 html[data-theme="dark"] .currency-input input { border-color: var(--line); background: #19282e; color: var(--ink); }
+html[data-theme="dark"] { color-scheme: dark; }
+html[data-theme="dark"] option { background: #19282e; color: var(--ink); }
+html[data-theme="dark"] .search-picker-options { border-color: var(--line); background: #19282e; }
+html[data-theme="dark"] .search-picker.is-open [data-picker-input] { border-bottom-color: transparent; }
+html[data-theme="dark"] .search-picker-option:hover,
+html[data-theme="dark"] .search-picker-option.is-active { background: #293b42; color: #8bd0bd; }
 html[data-theme="dark"] .theme-toggle:hover,
 html[data-theme="dark"] .logout-button:hover,
 html[data-theme="dark"] .button-secondary:hover { background: var(--green-light); }
