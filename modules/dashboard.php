@@ -1,33 +1,51 @@
 <?php
-$stats = $pdo->query("SELECT
-    (SELECT COUNT(*) FROM tbl_rental WHERE rental_status IN ('Active','Late')) AS active_rentals,
-    (SELECT COUNT(*) FROM tbl_car WHERE car_status='Available') AS available_cars,
-    (SELECT COUNT(*) FROM tbl_customer WHERE customer_status='Active') AS active_customers,
-    (SELECT COALESCE(SUM(i.invoice_amount - COALESCE(p.paid,0)),0) FROM tbl_invoice i LEFT JOIN (SELECT invoice_id,SUM(pay_amount) AS paid FROM tbl_payment GROUP BY invoice_id) p ON p.invoice_id=i.invoice_id WHERE i.invoice_status <> 'Paid') AS outstanding,
-    (SELECT COALESCE(SUM(pay_amount),0) FROM tbl_payment WHERE created_at >= DATE_FORMAT(CURDATE(),'%Y-%m-01')) AS monthly_revenue")->fetch();
+$isAdmin = current_user()['role'] === 'Admin';
+$statsQuery = $isAdmin
+    ? "SELECT
+        (SELECT COUNT(*) FROM tbl_rental WHERE rental_status IN ('Active','Late')) AS active_rentals,
+        (SELECT COUNT(*) FROM tbl_car WHERE car_status='Available') AS available_cars,
+        (SELECT COUNT(*) FROM tbl_customer WHERE customer_status='Active') AS active_customers,
+        (SELECT COUNT(*) FROM tbl_rental WHERE rental_status='Pending') AS pending_reservations,
+        (SELECT COALESCE(SUM(i.invoice_amount - COALESCE(p.paid,0)),0) FROM tbl_invoice i LEFT JOIN (SELECT invoice_id,SUM(pay_amount) AS paid FROM tbl_payment GROUP BY invoice_id) p ON p.invoice_id=i.invoice_id WHERE i.invoice_status <> 'Paid') AS outstanding,
+        (SELECT COALESCE(SUM(pay_amount),0) FROM tbl_payment WHERE created_at >= DATE_FORMAT(CURDATE(),'%Y-%m-01')) AS monthly_revenue"
+    : "SELECT
+        (SELECT COUNT(*) FROM tbl_rental WHERE rental_status IN ('Active','Late')) AS active_rentals,
+        (SELECT COUNT(*) FROM tbl_car WHERE car_status='Available') AS available_cars,
+        (SELECT COUNT(*) FROM tbl_customer WHERE customer_status='Active') AS active_customers,
+        (SELECT COUNT(*) FROM tbl_rental WHERE rental_status='Pending') AS pending_reservations";
+$stats = $pdo->query($statsQuery)->fetch();
 $period = chart_period();
 $periodStart = $period['start']->format('Y-m-d');
 $periodEnd = $period['end']->format('Y-m-d');
-$paymentQuery = $pdo->prepare("SELECT DATE_FORMAT(created_at,'%Y-%m') AS month, SUM(pay_amount) AS amount FROM tbl_payment WHERE created_at >= ? AND created_at < ? GROUP BY DATE_FORMAT(created_at,'%Y-%m') ORDER BY month");
-$paymentQuery->execute([$periodStart, $periodEnd]);
-$paymentRows = $paymentQuery->fetchAll();
-$paymentsByMonth = array_column($paymentRows, 'amount', 'month');
 $monthlyCollections = [];
-$month = $period['start'];
-for ($index = 0; $index < 6; $index++, $month = $month->modify('+1 month')) {
-    $key = $month->format('Y-m');
-    $monthlyCollections[] = ['label' => $month->format('M Y'), 'amount' => (float) ($paymentsByMonth[$key] ?? 0)];
+if ($isAdmin) {
+    $paymentQuery = $pdo->prepare("SELECT DATE_FORMAT(created_at,'%Y-%m') AS month, SUM(pay_amount) AS amount FROM tbl_payment WHERE created_at >= ? AND created_at < ? GROUP BY DATE_FORMAT(created_at,'%Y-%m') ORDER BY month");
+    $paymentQuery->execute([$periodStart, $periodEnd]);
+    $paymentRows = $paymentQuery->fetchAll();
+    $paymentsByMonth = array_column($paymentRows, 'amount', 'month');
+    $month = $period['start'];
+    for ($index = 0; $index < 6; $index++, $month = $month->modify('+1 month')) {
+        $key = $month->format('Y-m');
+        $monthlyCollections[] = ['label' => $month->format('M Y'), 'amount' => (float) ($paymentsByMonth[$key] ?? 0)];
+    }
+    $peakCollections = max(1.0, ...array_column($monthlyCollections, 'amount'));
 }
-$peakCollections = max(1.0, ...array_column($monthlyCollections, 'amount'));
 $rentalStatusQuery = $pdo->prepare("SELECT rental_status,COUNT(*) AS total FROM tbl_rental WHERE start_date >= ? AND start_date < ? GROUP BY rental_status ORDER BY FIELD(rental_status,'Pending','Active','Late','Completed','Dismissed')");
 $rentalStatusQuery->execute([$periodStart, $periodEnd]);
 $rentalStatuses = $rentalStatusQuery->fetchAll();
 $rentalTotal = max(1, array_sum(array_column($rentalStatuses, 'total')));
+$rentalStatusTotals = array_column($rentalStatuses, 'total', 'rental_status');
+$rentalOutcomeCards = [
+    ['label' => 'Pending', 'total' => (int) ($rentalStatusTotals['Pending'] ?? 0), 'detail' => 'Awaiting pickup', 'class' => 'pending'],
+    ['label' => 'Active / Late', 'total' => (int) ($rentalStatusTotals['Active'] ?? 0) + (int) ($rentalStatusTotals['Late'] ?? 0), 'detail' => (int) ($rentalStatusTotals['Active'] ?? 0) . ' active · ' . (int) ($rentalStatusTotals['Late'] ?? 0) . ' late', 'class' => 'active'],
+    ['label' => 'Completed', 'total' => (int) ($rentalStatusTotals['Completed'] ?? 0), 'detail' => 'Successfully returned', 'class' => 'completed'],
+    ['label' => 'Dismissed', 'total' => (int) ($rentalStatusTotals['Dismissed'] ?? 0), 'detail' => 'Reservations not picked up', 'class' => 'dismissed'],
+];
 $fleetQuery = $pdo->prepare('SELECT car_status,COUNT(*) AS total FROM tbl_car WHERE created_at >= ? AND created_at < ? GROUP BY car_status ORDER BY total DESC');
 $fleetQuery->execute([$periodStart, $periodEnd]);
 $fleetStatuses = $fleetQuery->fetchAll();
 $fleetTotal = max(1, array_sum(array_column($fleetStatuses, 'total')));
-$rentals = $pdo->query("SELECT r.rental_id,r.start_date,r.expected_return_date,r.rental_status,r.total_amount,c.first_name,c.last_name,v.brand,v.model,v.plate_no FROM tbl_rental r JOIN tbl_customer c ON c.customer_id=r.customer_id JOIN tbl_car v ON v.car_id=r.car_id ORDER BY r.created_at DESC LIMIT 6")->fetchAll();
+$rentals = $pdo->query('SELECT r.rental_id,r.start_date,r.expected_return_date,r.rental_status,' . ($isAdmin ? 'r.total_amount,' : '') . 'c.first_name,c.last_name,v.brand,v.model,v.plate_no FROM tbl_rental r JOIN tbl_customer c ON c.customer_id=r.customer_id JOIN tbl_car v ON v.car_id=r.car_id ORDER BY r.created_at DESC LIMIT 6')->fetchAll();
 ?>
 <div class="page-heading">
     <div><p class="eyebrow">YOUR OPERATIONS, AT A GLANCE · BATAAN</p><h1>Good <?= e((int) date('G') < 12 ? 'morning' : ((int) date('G') < 18 ? 'afternoon' : 'evening')) ?>, <?= e(current_user()['first_name']) ?></h1><p class="heading-copy">Here’s what’s happening across your Bataan rental business today.</p></div>
@@ -37,9 +55,11 @@ $rentals = $pdo->query("SELECT r.rental_id,r.start_date,r.expected_return_date,r
     <article class="metric-card"><div class="metric-top"><span class="metric-icon metric-blue">↗</span><span class="metric-label">Active Rentals</span></div><strong><?= e($stats['active_rentals']) ?></strong><span class="metric-foot">Currently on the road</span></article>
     <article class="metric-card"><div class="metric-top"><span class="metric-icon metric-green">▰</span><span class="metric-label">Available Vehicles</span></div><strong><?= e($stats['available_cars']) ?></strong><span class="metric-foot">Ready to reserve</span></article>
     <article class="metric-card"><div class="metric-top"><span class="metric-icon metric-violet">◎</span><span class="metric-label">Active Customers</span></div><strong><?= e($stats['active_customers']) ?></strong><span class="metric-foot">In your customer list</span></article>
-    <article class="metric-card"><div class="metric-top"><span class="metric-icon metric-amber">₱</span><span class="metric-label">Outstanding Invoices</span></div><strong><?= e(money($stats['outstanding'])) ?></strong><span class="metric-foot">Payments received this month: <?= e(money($stats['monthly_revenue'])) ?></span></article>
+    <?php if ($isAdmin): ?><article class="metric-card"><div class="metric-top"><span class="metric-icon metric-amber">₱</span><span class="metric-label">Outstanding Invoices</span></div><strong><?= e(money($stats['outstanding'])) ?></strong><span class="metric-foot">Payments received this month: <?= e(money($stats['monthly_revenue'])) ?></span></article><?php endif; ?>
+    <?php if (!$isAdmin): ?><article class="metric-card"><div class="metric-top"><span class="metric-icon metric-amber">◷</span><span class="metric-label">Pending Reservations</span></div><strong><?= e($stats['pending_reservations']) ?></strong><span class="metric-foot">Awaiting customer pickup</span></article><?php endif; ?>
 </div>
-<div class="dashboard-charts">
+<div class="dashboard-charts<?= $isAdmin ? ' dashboard-admin' : ' dashboard-staff' ?>">
+    <?php if ($isAdmin): ?>
     <section class="panel chart-panel"><div class="panel-heading"><div><h2>Monthly Overview</h2><p>Payments received by month.</p></div><strong class="chart-summary"><?= e(money($stats['monthly_revenue'])) ?><small>this month</small></strong></div><?= chart_period_controls('dashboard', $period) ?>
         <div class="column-chart" role="img" aria-label="Monthly payment collections for the last six months">
             <?php foreach ($monthlyCollections as $month): $height = $month['amount'] > 0 ? max(5, (int) round($month['amount'] / $peakCollections * 100)) : 0; ?>
@@ -47,11 +67,11 @@ $rentals = $pdo->query("SELECT r.rental_id,r.start_date,r.expected_return_date,r
             <?php endforeach; ?>
         </div>
     </section>
+    <?php endif; ?>
     <section class="panel chart-panel"><div class="panel-heading"><div><h2>Rental Outcomes</h2><p><?= array_sum(array_column($rentalStatuses, 'total')) ?> rentals by status and pickup month.</p></div></div><?= chart_period_controls('dashboard', $period) ?>
-        <div class="status-chart" role="img" aria-label="Rental counts grouped by status">
-            <?php if (!$rentalStatuses): ?><div class="empty-state"><strong>No rental activity yet</strong><span>Reservations will appear here.</span></div><?php endif; ?>
-            <?php foreach ($rentalStatuses as $status): $share = (int) round(((int) $status['total'] / $rentalTotal) * 100); ?>
-                <div class="status-chart-row"><div><span><?= render_status($status['rental_status']) ?></span><strong><?= (int) $status['total'] ?></strong></div><div class="status-chart-track"><i class="status-chart-<?= e(strtolower($status['rental_status'])) ?>" style="width:<?= $share ?>%"></i></div></div>
+        <div class="outcome-grid" aria-label="Rental counts grouped by status">
+            <?php foreach ($rentalOutcomeCards as $outcome): $share = (int) round($outcome['total'] / $rentalTotal * 100); ?>
+                <article class="outcome-card outcome-<?= e($outcome['class']) ?>"><span><?= e($outcome['label']) ?></span><strong><?= $outcome['total'] ?></strong><small><?= e($outcome['detail']) ?></small><div class="status-chart-track"><i style="width:<?= $share ?>%"></i></div></article>
             <?php endforeach; ?>
         </div>
     </section>
@@ -65,14 +85,14 @@ $rentals = $pdo->query("SELECT r.rental_id,r.start_date,r.expected_return_date,r
 </div>
 <section class="panel">
     <div class="panel-heading"><div><h2>Recent Rentals</h2><p>Your latest reservations and rental activity.</p></div><a class="text-link" href="index.php?page=rentals">All rentals <span>→</span></a></div>
-    <div class="table-wrap"><table><thead><tr><th>RENTAL</th><th>CUSTOMER</th><th>VEHICLE</th><th>PICKUP</th><th>RETURN</th><th>STATUS</th><th>AMOUNT</th></tr></thead><tbody>
-    <?php if (!$rentals): ?><tr><td colspan="7"><div class="empty-state"><strong>No rentals yet</strong><span>Create a reservation to see activity here.</span><a class="button button-secondary button-small" href="index.php?page=rentals&new=1">Create reservation</a></div></td></tr><?php endif; ?>
+    <div class="table-wrap"><table><thead><tr><th>RENTAL</th><th>CUSTOMER</th><th>VEHICLE</th><th>PICKUP</th><th>RETURN</th><th>STATUS</th><?php if ($isAdmin): ?><th>AMOUNT</th><?php endif; ?></tr></thead><tbody>
+    <?php if (!$rentals): ?><tr><td colspan="<?= $isAdmin ? 7 : 6 ?>"><div class="empty-state"><strong>No rentals yet</strong><span>Create a reservation to see activity here.</span><a class="button button-secondary button-small" href="index.php?page=rentals&new=1">Create reservation</a></div></td></tr><?php endif; ?>
     <?php foreach ($rentals as $rental): ?>
-        <tr><td><a class="table-primary" href="index.php?page=rentals&id=<?= (int) $rental['rental_id'] ?>">#RNT<?= (int) $rental['rental_id'] ?></a></td><td><?= e($rental['first_name'] . ' ' . $rental['last_name']) ?></td><td><span class="table-primary"><?= e($rental['brand'] . ' ' . $rental['model']) ?></span><span class="table-secondary"><?= e($rental['plate_no']) ?></span></td><td><?= e(date('M j, Y', strtotime($rental['start_date']))) ?></td><td><?= e(date('M j, Y', strtotime($rental['expected_return_date']))) ?></td><td><?= render_status($rental['rental_status']) ?></td><td><?= e(money($rental['total_amount'])) ?></td></tr>
+        <tr><td><a class="table-primary" href="index.php?page=rentals&id=<?= (int) $rental['rental_id'] ?>">#RNT<?= (int) $rental['rental_id'] ?></a></td><td><?= e($rental['first_name'] . ' ' . $rental['last_name']) ?></td><td><span class="table-primary"><?= e($rental['brand'] . ' ' . $rental['model']) ?></span><span class="table-secondary"><?= e($rental['plate_no']) ?></span></td><td><?= e(date('M j, Y', strtotime($rental['start_date']))) ?></td><td><?= e(date('M j, Y', strtotime($rental['expected_return_date']))) ?></td><td><?= render_status($rental['rental_status']) ?></td><?php if ($isAdmin): ?><td><?= e(money($rental['total_amount'])) ?></td><?php endif; ?></tr>
     <?php endforeach; ?>
     </tbody></table></div>
 </section>
 <div class="dashboard-lower">
     <section class="panel quick-panel"><div class="panel-heading"><div><h2>Quick Actions</h2><p>Get common tasks done faster.</p></div></div><div class="quick-actions"><a href="index.php?page=customers&new=1"><span class="quick-icon quick-blue">＋</span><span><strong>Add a customer</strong><small>Register a new renter</small></span><b>→</b></a><?php if (current_user()['role'] === 'Admin'): ?><a href="index.php?page=vehicles&new=1"><span class="quick-icon quick-green">▰</span><span><strong>Add a vehicle</strong><small>Update your fleet</small></span><b>→</b></a><?php endif; ?><a href="index.php?page=returns"><span class="quick-icon quick-amber">↙</span><span><strong>Process a return</strong><small>Close out a rental</small></span><b>→</b></a></div></section>
-    <section class="panel insight-panel"><div class="panel-heading"><div><h2>Keep Things Moving</h2><p>A smooth rental starts with a clear next step.</p></div></div><div class="insight-body"><div class="insight-art">↗</div><p>Check upcoming pickups and outstanding invoices to keep your vehicles and customers on track.</p><a class="text-link" href="index.php?page=reports">Explore reports <span>→</span></a></div></section>
+    <section class="panel insight-panel"><div class="panel-heading"><div><h2>Keep Things Moving</h2><p>A smooth rental starts with a clear next step.</p></div></div><div class="insight-body"><div class="insight-art">↗</div><p><?= $isAdmin ? 'Check upcoming pickups and outstanding invoices to keep your vehicles and customers on track.' : 'Check upcoming pickups and open rentals to keep your vehicles and customers on track.' ?></p><a class="text-link" href="index.php?page=<?= $isAdmin ? 'reports' : 'rentals' ?>"><?= $isAdmin ? 'Explore reports' : 'View rentals' ?> <span>→</span></a></div></section>
 </div>

@@ -1,4 +1,5 @@
 <?php
+$isAdmin = current_user()['role'] === 'Admin';
 $editId = query_id('edit');
 $editing = null;
 if ($editId > 0) {
@@ -16,6 +17,8 @@ if ($query !== '') {
     $customers = $pdo->query('SELECT customer_id,first_name,middle_name,last_name,contact_no,email,customer_status,created_at,(customer_photo IS NOT NULL) AS has_photo FROM tbl_customer ORDER BY created_at DESC')->fetchAll();
 }
 $customerCount = (int) $pdo->query('SELECT COUNT(*) FROM tbl_customer')->fetchColumn();
+$customerPagination = paginate_records($customers, 'customer_page');
+$customers = $customerPagination['items'];
 $customerForm = $editing || isset($_GET['new']);
 ?>
 <div class="page-heading"><div><p class="eyebrow">PEOPLE FIRST</p><h1>Customers</h1><p class="heading-copy">Keep renter details and documents in one place.</p></div><?php if (!$customerForm): ?><a class="button button-primary" href="index.php?page=customers&new=1">＋ Add customer</a><?php endif; ?></div>
@@ -31,7 +34,7 @@ $customerForm = $editing || isset($_GET['new']);
         <label>Date of birth <span class="required">*</span><input type="date" name="date_of_birth" max="<?= e(date('Y-m-d', strtotime('-20 years'))) ?>" required value="<?= e($editing['date_of_birth'] ?? '') ?>"></label>
         <label>Contact number <span class="required">*</span><input type="tel" name="contact_no" maxlength="20" required value="<?= e($editing['contact_no'] ?? '') ?>"></label>
         <label>Email address <span class="required">*</span><input type="email" name="email" maxlength="100" required value="<?= e($editing['email'] ?? '') ?>"></label>
-        <label>Customer status<select name="customer_status"><option <?= ($editing['customer_status'] ?? 'Active') === 'Active' ? 'selected' : '' ?>>Active</option><option <?= ($editing['customer_status'] ?? '') === 'Inactive' ? 'selected' : '' ?>>Inactive</option></select></label>
+        <?php if ($isAdmin): ?><label>Customer status<select name="customer_status"><option <?= ($editing['customer_status'] ?? 'Active') === 'Active' ? 'selected' : '' ?>>Active</option><option <?= ($editing['customer_status'] ?? '') === 'Inactive' ? 'selected' : '' ?>>Inactive</option></select></label><?php elseif ($editing): ?><div class="field-note">Customer status: <?= e($editing['customer_status']) ?>. Only an administrator can change it.</div><?php endif; ?>
         <label class="span-two">Address <span class="required">*</span><input name="address" maxlength="255" required value="<?= e($editing['address'] ?? '') ?>"></label>
         <div class="form-divider span-two"><span>Documents & photo</span><small>JPG, PNG, or WebP · max 5 MB per file</small></div>
         <?php foreach (['customer_photo' => 'Customer photo', 'driver_license' => "Driver's license", 'secondary_id' => 'Secondary ID'] as $field => $label): ?>
@@ -42,10 +45,10 @@ $customerForm = $editing || isset($_GET['new']);
 </section>
 <?php else: ?>
 <section class="panel">
-    <div class="panel-heading"><div><h2>Customer Directory <span class="count-pill"><?= count($customers) ?> / <?= $customerCount ?></span></h2><p>Search by renter name, phone, email, or address.</p></div><form class="search-form" method="get"><input type="hidden" name="page" value="customers"><input name="q" value="<?= e($query) ?>" placeholder="Name, phone, email, address" aria-label="Search customers"><button class="button button-secondary button-small">Search</button><?php if ($query): ?><a class="button button-quiet button-small" href="index.php?page=customers">Clear</a><?php endif; ?></form></div>
+    <div class="panel-heading"><div><h2>Customer Directory <span class="count-pill"><?= $customerPagination['total'] ?> / <?= $customerCount ?></span></h2><p>Search by renter name, phone, email, or address.</p></div><form class="search-form" method="get"><input type="hidden" name="page" value="customers"><input name="q" value="<?= e($query) ?>" placeholder="Name, phone, email, address" aria-label="Search customers"><button class="button button-secondary button-small">Search</button><?php if ($query): ?><a class="button button-quiet button-small" href="index.php?page=customers">Clear</a><?php endif; ?></form></div>
     <div class="table-wrap"><table><thead><tr><th>CUSTOMER</th><th>CONTACT</th><th>EMAIL</th><th>STATUS</th><th>ADDED</th><th>ACTIONS</th></tr></thead><tbody>
     <?php if (!$customers): ?><tr><td colspan="6"><div class="empty-state"><strong><?= $query ? 'No matching customers' : 'Your customer list is empty' ?></strong><span><?= $query ? 'Try a different name, contact, email, or address.' : 'Add your first customer to get started.' ?></span><?php if (!$query): ?><a class="button button-secondary button-small" href="index.php?page=customers&new=1">Add customer</a><?php endif; ?></div></td></tr><?php endif; ?>
     <?php foreach ($customers as $customer): ?><tr><td class="person-cell"><?php if ($customer['has_photo']): ?><img class="person-avatar" src="index.php?image=customer&id=<?= (int) $customer['customer_id'] ?>" alt=""><?php else: ?><span class="person-avatar person-avatar-fallback"><?= e(strtoupper(substr($customer['first_name'], 0, 1) . substr($customer['last_name'], 0, 1))) ?></span><?php endif; ?><span><strong><?= e(full_name($customer)) ?></strong><small>Customer #<?= (int) $customer['customer_id'] ?></small></span></td><td><?= e($customer['contact_no']) ?></td><td><?= e($customer['email'] ?: '—') ?></td><td><?= render_status($customer['customer_status']) ?></td><td><?= e(date('M j, Y', strtotime($customer['created_at']))) ?></td><td><a class="button button-quiet button-small" href="index.php?page=customers&edit=<?= (int) $customer['customer_id'] ?>">Edit</a></td></tr><?php endforeach; ?>
-    </tbody></table></div>
+    </tbody></table></div><?= render_pagination($customerPagination, 'customer_page') ?>
 </section>
 <?php endif; ?>

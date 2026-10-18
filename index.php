@@ -31,7 +31,7 @@ if (current_user() !== null) {
 $requestedPage = $_GET['page'] ?? (current_user() ? 'dashboard' : 'login');
 $page = is_string($requestedPage) ? $requestedPage : 'dashboard';
 $publicPages = ['login'];
-$adminPages = ['users', 'settings'];
+$adminPages = ['users', 'settings', 'reports'];
 $knownPages = ['login', 'dashboard', 'customers', 'vehicles', 'rentals', 'returns', 'billing', 'users', 'reports', 'settings'];
 if (!in_array($page, $knownPages, true)) {
     $page = 'dashboard';

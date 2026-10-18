@@ -114,6 +114,50 @@ function chart_period_controls(string $page, array $period): string
     return '<nav class="chart-period" aria-label="Chart date range">' . $previous . '<strong>' . e($range) . '</strong>' . $next . '</nav>';
 }
 
+function paginate_records(array $records, string $queryKey, int $perPage = 15): array
+{
+    $total = count($records);
+    $pageCount = max(1, (int) ceil($total / $perPage));
+    $rawPage = $_GET[$queryKey] ?? 1;
+    $requestedPage = is_string($rawPage) || is_int($rawPage)
+        ? filter_var($rawPage, FILTER_VALIDATE_INT)
+        : false;
+    $page = min($pageCount, max(1, $requestedPage === false ? 1 : $requestedPage));
+
+    return [
+        'items' => array_slice($records, ($page - 1) * $perPage, $perPage),
+        'page' => $page,
+        'page_count' => $pageCount,
+        'per_page' => $perPage,
+        'total' => $total,
+    ];
+}
+
+function render_pagination(array $pagination, string $queryKey): string
+{
+    $page = (int) $pagination['page'];
+    $pageCount = (int) $pagination['page_count'];
+    $total = (int) $pagination['total'];
+    $first = $total === 0 ? 0 : (($page - 1) * (int) $pagination['per_page']) + 1;
+    $last = min($total, $page * (int) $pagination['per_page']);
+    $query = array_filter($_GET, static fn(mixed $value): bool => is_scalar($value));
+
+    $link = static function (int $targetPage) use ($query, $queryKey): string {
+        $query[$queryKey] = $targetPage;
+        return 'index.php?' . e(http_build_query($query));
+    };
+    $previous = $page > 1
+        ? '<a class="button button-quiet button-small" href="' . $link($page - 1) . '" aria-label="Show previous 15 rows">← Previous</a>'
+        : '<span class="button button-quiet button-small is-disabled" aria-disabled="true">← Previous</span>';
+    $next = $page < $pageCount
+        ? '<a class="button button-quiet button-small" href="' . $link($page + 1) . '" aria-label="Show next 15 rows">Next →</a>'
+        : '<span class="button button-quiet button-small is-disabled" aria-disabled="true">Next →</span>';
+
+    return '<nav class="pagination" aria-label="Table pages">' . $previous
+        . '<strong>Showing ' . $first . '–' . $last . ' of ' . $total . '</strong>'
+        . $next . '</nav>';
+}
+
 function full_name(array $person): string
 {
     return trim(implode(' ', array_filter([

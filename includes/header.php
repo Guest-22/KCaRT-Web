@@ -25,8 +25,10 @@
                 'returns'   => ['Returns', '↙'],
                 'vehicles'  => ['Vehicle fleet', '▰'],
                 'billing'   => ['Billing', '₱'],
-                'reports'   => ['Reports', '▤'],
             ];
+            if (current_user()['role'] === 'Admin') {
+                $navigation['reports'] = ['Reports', '▤'];
+            }
             foreach ($navigation as $key => [$label, $icon]):
             ?>
                 <a class="nav-link <?= $page === $key ? 'is-active' : '' ?>" href="index.php?page=<?= e($key) ?>"><span class="nav-icon"><?= e($icon) ?></span><?= e($label) ?></a>

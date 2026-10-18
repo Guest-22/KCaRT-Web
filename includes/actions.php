@@ -39,6 +39,19 @@ function process_action(PDO $pdo): void
             case 'customer_save':
                 require_login();
                 $id = post_record_id('customer_id');
+                $existingCustomerStatus = 'Active';
+                if ($id > 0) {
+                    $existingCustomer = $pdo->prepare('SELECT customer_status FROM tbl_customer WHERE customer_id=?');
+                    $existingCustomer->execute([$id]);
+                    $savedCustomerStatus = $existingCustomer->fetchColumn();
+                    if ($savedCustomerStatus === false) {
+                        throw new InvalidArgumentException('Customer record not found.');
+                    }
+                    $existingCustomerStatus = (string) $savedCustomerStatus;
+                }
+                $customerStatus = current_user()['role'] === 'Admin'
+                    ? post_enum('customer_status', ['Active', 'Inactive'])
+                    : $existingCustomerStatus;
                 $values = [
                     post_string('first_name', 50),
                     post_string('middle_name', 50, false),
@@ -48,15 +61,8 @@ function process_action(PDO $pdo): void
                     post_phone('contact_no'),
                     post_email('email', true),
                     post_string('address', 255) ?: null,
-                    post_enum('customer_status', ['Active', 'Inactive']),
+                    $customerStatus,
                 ];
-                if ($id > 0) {
-                    $existingCustomer = $pdo->prepare('SELECT customer_id FROM tbl_customer WHERE customer_id=?');
-                    $existingCustomer->execute([$id]);
-                    if (!$existingCustomer->fetchColumn()) {
-                        throw new InvalidArgumentException('Customer record not found.');
-                    }
-                }
                 $uploads = [
                     'driver_license' => uploaded_blob('driver_license'),
                     'secondary_id' => uploaded_blob('secondary_id'),
