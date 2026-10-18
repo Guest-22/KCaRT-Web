@@ -61,7 +61,7 @@ li { margin: 0 0 7px; padding-left: 2px; }
     <p>This guide describes the current local Kcart Rentals application and the recommended end-to-end workflow for administrators and staff.</p>
     <div class="cover-note"><strong>Local deployment:</strong> PHP 8.1+, MySQL/MariaDB, and Apache on XAMPP. Business timezone is Asia/Manila; displayed money uses Philippine peso formatting.</div>
   </div>
-  <div class="footer">Updated 17 October 2026 · Customer age, team password, access, reporting, and workflow guidance</div>
+  <div class="footer">Updated 18 October 2026 · Customer age, team password, access, reporting, and workflow guidance</div>
 </header>
 
 <section class="section first">
@@ -131,7 +131,30 @@ li { margin: 0 0 7px; padding-left: 2px; }
 </section>
 
 <section class="section">
-  <p class="eyebrow">05 · IMAGE AND BRANDING FILES</p>
+  <p class="eyebrow">05 · COMPLETE MODULE DIRECTORY</p>
+  <h2>Every module and its workflow</h2>
+  <p class="lead">Use this directory to choose the right screen at each point in the rental lifecycle. Admin and Staff can use the operational modules unless the access column says otherwise.</p>
+  <table>
+    <thead><tr><th>Module</th><th>Who</th><th>What to do</th></tr></thead>
+    <tbody>
+      <tr><td>Sign in / Sign out</td><td>Admin, Staff</td><td>Open the local app, enter your active username and password, verify your role in the sidebar, and use <em>Log out</em> when finished.</td></tr>
+      <tr><td>Dashboard</td><td>Admin, Staff</td><td>Review active rentals, available vehicles, active customers, outstanding invoices, and current-month collections. Use chart navigation to compare six-month periods; open a recent rental or start a reservation from the shortcuts.</td></tr>
+      <tr><td>Customers</td><td>Admin, Staff</td><td>Search by name, phone, email, or address. Add or edit contact details and status; enter a verified date of birth (age 20+). Add optional customer photo, driver's license, or secondary ID only with authorization.</td></tr>
+      <tr><td>Vehicle fleet</td><td>Admin manages; Staff views</td><td>Search or filter by vehicle, type, and status. Staff can inspect vehicle specifications, availability, and rates. Admin can add/edit vehicles and switch only idle vehicles between Available and Maintenance; rented or reserved vehicles cannot be changed.</td></tr>
+      <tr><td>Rentals</td><td>Admin, Staff</td><td>Create a reservation for an active customer and available car, then choose pickup and expected return. Review the day-based estimate. Open a rental to check invoice/payment status and confirm pickup within the allowed window after payment.</td></tr>
+      <tr><td>Returns</td><td>Admin, Staff</td><td>Find an Active or Late rental, open Process return, record inbound mileage and inspected condition, enter factual notes and any approved damage fee, then complete check-in. Review recent return history below the open-rentals list.</td></tr>
+      <tr><td>Billing</td><td>Admin, Staff</td><td>Search/filter invoices or open an invoice from its rental. Verify the balance, record only money actually received with method and optional reference, and use payment history and Print invoice for reconciliation/receipt.</td></tr>
+      <tr><td>Reports</td><td>Admin, Staff</td><td>Review collection, fleet-status, rental-outcome, and top-customer metrics. Navigate six-month periods; download rental or payment CSVs when needed.</td></tr>
+      <tr><td>Team &amp; access</td><td>Admin only</td><td>Create a named account for each person, assign the least access needed, and set a password of at least eight characters. Edit account details or password, deactivate leavers, and keep at least one active Admin.</td></tr>
+      <tr><td>Settings</td><td>Admin only</td><td>Set the reservation fee and per-day late fee. These values apply to new invoices; a zero late fee disables late-fee charges.</td></tr>
+      <tr><td>Automatic status maintenance</td><td>System / Admin setup</td><td>The app refreshes overdue and missed reservations on authenticated visits. To refresh while idle, schedule the CLI-only <span class="path">maintenance.php</span> task every five minutes using the Windows Task Scheduler instructions in the setup guide.</td></tr>
+    </tbody>
+  </table>
+  <div class="callout"><strong>Role sequence:</strong> Staff handles customer intake → availability check → reservation → payment → pickup → return → invoice reconciliation → reports. Admin can perform that same sequence and additionally prepares the fleet, manages team access, and configures billing rules.</div>
+</section>
+
+<section class="section">
+  <p class="eyebrow">06 · IMAGE AND BRANDING FILES</p>
   <h2>Where to replace the logo or images</h2>
   <div class="asset">
     <div class="logo-preview"><img src="../assets/images/logo.svg" alt="Current Kcart logo"><strong>Application logo</strong></div>
@@ -143,7 +166,7 @@ li { margin: 0 0 7px; padding-left: 2px; }
 </section>
 
 <section class="section">
-  <p class="eyebrow">06 · LOCAL TEST DATA &amp; RECOMMENDATIONS</p>
+  <p class="eyebrow">07 · LOCAL TEST DATA &amp; RECOMMENDATIONS</p>
   <h2>Testing, security, and operational recommendations</h2>
   <ul>
     <li>The local database contains synthetic Bataan customer, vehicle, rental, return, invoice, and payment records to exercise dashboards and workflows. These are fictional test records.</li>

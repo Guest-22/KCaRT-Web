@@ -34,20 +34,20 @@ $rentals = $pdo->query("SELECT r.rental_id,r.start_date,r.expected_return_date,r
     <a class="button button-primary" href="index.php?page=rentals&new=1"><span>＋</span> New reservation</a>
 </div>
 <div class="metric-grid">
-    <article class="metric-card"><div class="metric-top"><span class="metric-icon metric-blue">↗</span><span class="metric-label">Active rentals</span></div><strong><?= e($stats['active_rentals']) ?></strong><span class="metric-foot">Currently on the road</span></article>
-    <article class="metric-card"><div class="metric-top"><span class="metric-icon metric-green">▰</span><span class="metric-label">Available vehicles</span></div><strong><?= e($stats['available_cars']) ?></strong><span class="metric-foot">Ready to reserve</span></article>
-    <article class="metric-card"><div class="metric-top"><span class="metric-icon metric-violet">◎</span><span class="metric-label">Active customers</span></div><strong><?= e($stats['active_customers']) ?></strong><span class="metric-foot">In your customer list</span></article>
-    <article class="metric-card"><div class="metric-top"><span class="metric-icon metric-amber">₱</span><span class="metric-label">Outstanding invoices</span></div><strong><?= e(money($stats['outstanding'])) ?></strong><span class="metric-foot">Payments received this month: <?= e(money($stats['monthly_revenue'])) ?></span></article>
+    <article class="metric-card"><div class="metric-top"><span class="metric-icon metric-blue">↗</span><span class="metric-label">Active Rentals</span></div><strong><?= e($stats['active_rentals']) ?></strong><span class="metric-foot">Currently on the road</span></article>
+    <article class="metric-card"><div class="metric-top"><span class="metric-icon metric-green">▰</span><span class="metric-label">Available Vehicles</span></div><strong><?= e($stats['available_cars']) ?></strong><span class="metric-foot">Ready to reserve</span></article>
+    <article class="metric-card"><div class="metric-top"><span class="metric-icon metric-violet">◎</span><span class="metric-label">Active Customers</span></div><strong><?= e($stats['active_customers']) ?></strong><span class="metric-foot">In your customer list</span></article>
+    <article class="metric-card"><div class="metric-top"><span class="metric-icon metric-amber">₱</span><span class="metric-label">Outstanding Invoices</span></div><strong><?= e(money($stats['outstanding'])) ?></strong><span class="metric-foot">Payments received this month: <?= e(money($stats['monthly_revenue'])) ?></span></article>
 </div>
 <div class="dashboard-charts">
-    <section class="panel chart-panel"><div class="panel-heading"><div><h2>Monthly collections</h2><p>Payments received by month.</p></div><strong class="chart-summary"><?= e(money($stats['monthly_revenue'])) ?><small>this month</small></strong></div><?= chart_period_controls('dashboard', $period) ?>
+    <section class="panel chart-panel"><div class="panel-heading"><div><h2>Monthly Overview</h2><p>Payments received by month.</p></div><strong class="chart-summary"><?= e(money($stats['monthly_revenue'])) ?><small>this month</small></strong></div><?= chart_period_controls('dashboard', $period) ?>
         <div class="column-chart" role="img" aria-label="Monthly payment collections for the last six months">
             <?php foreach ($monthlyCollections as $month): $height = $month['amount'] > 0 ? max(5, (int) round($month['amount'] / $peakCollections * 100)) : 0; ?>
                 <div class="column-chart-item" aria-label="<?= e($month['label'] . ': ' . money($month['amount'])) ?>"><div class="column-chart-value"><?= e($month['amount'] > 0 ? money($month['amount']) : '—') ?></div><div class="column-chart-track"><i style="height:<?= $height ?>%"></i></div><span><?= e($month['label']) ?></span></div>
             <?php endforeach; ?>
         </div>
     </section>
-    <section class="panel chart-panel"><div class="panel-heading"><div><h2>Rental outcomes</h2><p><?= array_sum(array_column($rentalStatuses, 'total')) ?> rentals by status and pickup month.</p></div></div><?= chart_period_controls('dashboard', $period) ?>
+    <section class="panel chart-panel"><div class="panel-heading"><div><h2>Rental Outcomes</h2><p><?= array_sum(array_column($rentalStatuses, 'total')) ?> rentals by status and pickup month.</p></div></div><?= chart_period_controls('dashboard', $period) ?>
         <div class="status-chart" role="img" aria-label="Rental counts grouped by status">
             <?php if (!$rentalStatuses): ?><div class="empty-state"><strong>No rental activity yet</strong><span>Reservations will appear here.</span></div><?php endif; ?>
             <?php foreach ($rentalStatuses as $status): $share = (int) round(((int) $status['total'] / $rentalTotal) * 100); ?>
@@ -55,7 +55,7 @@ $rentals = $pdo->query("SELECT r.rental_id,r.start_date,r.expected_return_date,r
             <?php endforeach; ?>
         </div>
     </section>
-    <section class="panel chart-panel"><div class="panel-heading"><div><h2>Fleet availability</h2><p>Current status of vehicles added during this period.</p></div></div><?= chart_period_controls('dashboard', $period) ?>
+    <section class="panel chart-panel"><div class="panel-heading"><div><h2>Fleet Availability</h2><p>Current status of vehicles added during this period.</p></div></div><?= chart_period_controls('dashboard', $period) ?>
         <div class="fleet-breakdown"><?php if (!$fleetStatuses): ?><div class="empty-state"><strong>No vehicles added in this period</strong><span>Choose an earlier period to view older additions.</span></div><?php endif; ?>
             <?php foreach ($fleetStatuses as $fleetStatus): $share = (int) round(((int) $fleetStatus['total'] / $fleetTotal) * 100); ?>
                 <div class="fleet-row"><div class="fleet-row-label"><span><?= render_status($fleetStatus['car_status']) ?></span><strong><?= (int) $fleetStatus['total'] ?></strong></div><div class="status-chart-track"><i class="fleet-chart-bar" style="width:<?= $share ?>%"></i></div></div>
@@ -64,7 +64,7 @@ $rentals = $pdo->query("SELECT r.rental_id,r.start_date,r.expected_return_date,r
     </section>
 </div>
 <section class="panel">
-    <div class="panel-heading"><div><h2>Recent rentals</h2><p>Your latest reservations and rental activity.</p></div><a class="text-link" href="index.php?page=rentals">All rentals <span>→</span></a></div>
+    <div class="panel-heading"><div><h2>Recent Rentals</h2><p>Your latest reservations and rental activity.</p></div><a class="text-link" href="index.php?page=rentals">All rentals <span>→</span></a></div>
     <div class="table-wrap"><table><thead><tr><th>RENTAL</th><th>CUSTOMER</th><th>VEHICLE</th><th>PICKUP</th><th>RETURN</th><th>STATUS</th><th>AMOUNT</th></tr></thead><tbody>
     <?php if (!$rentals): ?><tr><td colspan="7"><div class="empty-state"><strong>No rentals yet</strong><span>Create a reservation to see activity here.</span><a class="button button-secondary button-small" href="index.php?page=rentals&new=1">Create reservation</a></div></td></tr><?php endif; ?>
     <?php foreach ($rentals as $rental): ?>
@@ -73,6 +73,6 @@ $rentals = $pdo->query("SELECT r.rental_id,r.start_date,r.expected_return_date,r
     </tbody></table></div>
 </section>
 <div class="dashboard-lower">
-    <section class="panel quick-panel"><div class="panel-heading"><div><h2>Quick actions</h2><p>Get common tasks done faster.</p></div></div><div class="quick-actions"><a href="index.php?page=customers&new=1"><span class="quick-icon quick-blue">＋</span><span><strong>Add a customer</strong><small>Register a new renter</small></span><b>→</b></a><?php if (current_user()['role'] === 'Admin'): ?><a href="index.php?page=vehicles&new=1"><span class="quick-icon quick-green">▰</span><span><strong>Add a vehicle</strong><small>Update your fleet</small></span><b>→</b></a><?php endif; ?><a href="index.php?page=returns"><span class="quick-icon quick-amber">↙</span><span><strong>Process a return</strong><small>Close out a rental</small></span><b>→</b></a></div></section>
-    <section class="panel insight-panel"><div class="panel-heading"><div><h2>Keep things moving</h2><p>A smooth rental starts with a clear next step.</p></div></div><div class="insight-body"><div class="insight-art">↗</div><p>Check upcoming pickups and outstanding invoices to keep your vehicles and customers on track.</p><a class="text-link" href="index.php?page=reports">Explore reports <span>→</span></a></div></section>
+    <section class="panel quick-panel"><div class="panel-heading"><div><h2>Quick Actions</h2><p>Get common tasks done faster.</p></div></div><div class="quick-actions"><a href="index.php?page=customers&new=1"><span class="quick-icon quick-blue">＋</span><span><strong>Add a customer</strong><small>Register a new renter</small></span><b>→</b></a><?php if (current_user()['role'] === 'Admin'): ?><a href="index.php?page=vehicles&new=1"><span class="quick-icon quick-green">▰</span><span><strong>Add a vehicle</strong><small>Update your fleet</small></span><b>→</b></a><?php endif; ?><a href="index.php?page=returns"><span class="quick-icon quick-amber">↙</span><span><strong>Process a return</strong><small>Close out a rental</small></span><b>→</b></a></div></section>
+    <section class="panel insight-panel"><div class="panel-heading"><div><h2>Keep Things Moving</h2><p>A smooth rental starts with a clear next step.</p></div></div><div class="insight-body"><div class="insight-art">↗</div><p>Check upcoming pickups and outstanding invoices to keep your vehicles and customers on track.</p><a class="text-link" href="index.php?page=reports">Explore reports <span>→</span></a></div></section>
 </div>
