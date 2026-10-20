@@ -551,6 +551,7 @@ html[data-theme="dark"] .quick-green { background: #25443d; color: #9bd6bd; }
 html[data-theme="dark"] .metric-violet { background: #3a334d; color: #c4b3f1; }
 html[data-theme="dark"] .metric-amber,
 html[data-theme="dark"] .quick-amber { background: #4a3d2b; color: #f0c77e; }
+html[data-theme="dark"] .settings-icon { background: #25443d; color: #9bd6bd; }
 html[data-theme="dark"] .role-pill { background: #34464d; color: #d1dce0; }
 html[data-theme="dark"] .theme-toggle,
 html[data-theme="dark"] .logout-button,

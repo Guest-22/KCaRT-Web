@@ -27,7 +27,7 @@ $recentReturns = $returnPagination['items'];
 <form method="post" class="form-grid"><?= csrf_field() ?><input type="hidden" name="action" value="return_save"><input type="hidden" name="rental_id" value="<?= (int) $selectedRental['rental_id'] ?>">
     <label>Current mileage out (km)<input value="<?= (int) $selectedRental['mileage'] ?>" disabled></label><label>Return mileage in (km) <span class="required">*</span><input type="number" name="mileage_in" min="<?= (int) $selectedRental['mileage'] ?>" max="2147483647" value="<?= (int) $selectedRental['mileage'] ?>" required></label>
     <label>Vehicle condition<select name="vehicle_condition"><?php foreach (['Excellent','Good','Fair','Damaged'] as $condition): ?><option><?= e($condition) ?></option><?php endforeach; ?></select></label>
-    <label>Damage fee (₱)<input type="number" name="damage_fee" min="0" max="99999999.99" step="0.01" value="0.00" required></label>
+    <label>Damage fee (₱)<input type="number" name="damage_fee" min="0" max="99999999.99" step="1" value="0.00" required></label>
     <label class="span-two">Remarks<input name="remarks" maxlength="255" placeholder="Optional notes about the return"></label>
     <div class="form-actions span-two"><a class="button button-quiet" href="index.php?page=returns">Cancel</a><button class="button button-primary" type="submit">Complete vehicle return</button></div>
 </form></section><?php elseif ($selectedRentalId): ?><div class="alert alert-error">This rental is not open for return.</div><?php endif; ?>
