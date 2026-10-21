@@ -48,7 +48,7 @@ if (rentalForm) {
             return;
         }
         const days = Math.max(1, Math.ceil((endTime - startTime) / 86400000));
-        if (estimate) estimate.textContent = `₱${(days * rate).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} · ${days} day${days === 1 ? '' : 's'}`;
+        if (estimate) estimate.textContent = `₱${Math.round(days * rate).toLocaleString('en-PH')} · ${days} day${days === 1 ? '' : 's'}`;
     };
     car?.addEventListener('change', updateEstimate);
     start?.addEventListener('input', updateEstimate);

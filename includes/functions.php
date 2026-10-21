@@ -88,6 +88,14 @@ function money(mixed $amount): string
     return '₱' . number_format((float) $amount, 2);
 }
 
+function money_compact(mixed $amount): string
+{
+    $value = (float) $amount;
+    return abs($value - round($value)) < 0.001
+        ? '₱' . number_format($value, 0)
+        : money($value);
+}
+
 function chart_period(): array
 {
     $rawOffset = $_GET['period'] ?? '0';
@@ -252,6 +260,25 @@ function post_amount(string $key, float $minimum = 0): float
         throw new InvalidArgumentException('Please enter a valid amount.');
     }
     return round($value, 2);
+}
+
+function post_whole_amount(string $key, int $minimum = 1, int $maximum = 99999999): int
+{
+    $rawValue = $_POST[$key] ?? null;
+    if (!is_string($rawValue) || !preg_match('/^\d+$/D', $rawValue)) {
+        throw new InvalidArgumentException('Payment amount must be a whole number of pesos.');
+    }
+
+    $normalizedValue = ltrim($rawValue, '0');
+    $normalizedValue = $normalizedValue === '' ? '0' : $normalizedValue;
+    if (strlen($normalizedValue) > 8) {
+        throw new InvalidArgumentException('Enter a whole-peso payment within the supported limit.');
+    }
+    $value = (int) $normalizedValue;
+    if ($value < $minimum || $value > $maximum) {
+        throw new InvalidArgumentException('Enter a whole-peso payment within the supported limit.');
+    }
+    return $value;
 }
 
 function post_email(string $key, bool $required = false): ?string

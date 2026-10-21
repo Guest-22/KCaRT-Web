@@ -35,7 +35,7 @@ To develop a locally hosted web application that supports and organizes the day-
 - Maintain vehicle specifications, rental rates, photos, and operational availability.
 - Create reservations only for active customers and available vehicles.
 - Calculate rental estimates from the rental period and the vehicle's daily rate.
-- Track reservation fees, rental balances, additional charges, payments, and invoice balances.
+- Track reservation fees, rental balances, additional charges, payments, and invoice balances using whole-peso billing amounts; reject decimal payment entries.
 - Record vehicle returns, incoming mileage, inspection condition, and remarks.
 - Apply Admin and Staff permissions to relevant screens and actions.
 - Present operational metrics and period-based charts, and provide rental and payment CSV exports.

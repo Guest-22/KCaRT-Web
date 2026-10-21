@@ -197,11 +197,11 @@ function process_action(PDO $pdo): void
                     throw new InvalidArgumentException('That vehicle is no longer available.');
                 }
                 $days = max(1, (int) ceil((strtotime($expected) - strtotime($start)) / 86400));
-                $total = round($days * (float) $vehicle['daily_rate'], 2);
+                $total = round($days * (float) $vehicle['daily_rate']);
                 if ($total > 99999999.99) {
                     throw new InvalidArgumentException('The rental total exceeds the maximum supported invoice amount.');
                 }
-                $reservationFee = min($total, max(0, (float) setting($pdo, 'reservation_fee', '1000.00')));
+                $reservationFee = min($total, max(0, (int) round((float) setting($pdo, 'reservation_fee', '1000.00'))));
                 $pdo->prepare("INSERT INTO tbl_rental (customer_id,car_id,processed_by,start_date,expected_return_date,rental_status,total_amount) VALUES (?,?,?,?,?,'Pending',?)")
                     ->execute([$customerId, $carId, current_user()['user_id'], $start, $expected, $total]);
                 $rentalId = (int) $pdo->lastInsertId();
@@ -245,7 +245,7 @@ function process_action(PDO $pdo): void
                 $rentalId = post_int('rental_id', 1);
                 $mileageIn = post_int('mileage_in', 0, 2147483647);
                 $condition = post_enum('vehicle_condition', ['Excellent', 'Good', 'Fair', 'Damaged']);
-                $damageFee = post_amount('damage_fee');
+                $damageFee = post_whole_amount('damage_fee', 0);
                 $remarks = post_string('remarks', 255, false);
                 $pdo->beginTransaction();
                 $statement = $pdo->prepare("SELECT r.*, c.mileage, c.car_id FROM tbl_rental r JOIN tbl_car c ON c.car_id=r.car_id WHERE r.rental_id=? AND r.rental_status IN ('Active','Late') FOR UPDATE");
@@ -265,11 +265,11 @@ function process_action(PDO $pdo): void
                 if ($damageFee > 0) {
                     $pdo->prepare("INSERT INTO tbl_invoice (rental_id,description,invoice_amount,invoice_status,due_date) VALUES (?,'Damage fee',?,'Unpaid',CURDATE())")->execute([$rentalId, $damageFee]);
                 }
-                $lateRate = max(0, (float) setting($pdo, 'late_fee_per_day', '0.00'));
+                $lateRate = max(0, (int) round((float) setting($pdo, 'late_fee_per_day', '0.00')));
                 $lateSeconds = strtotime($now) - strtotime($rental['expected_return_date']);
                 if ($lateRate > 0 && $lateSeconds > 0) {
                     $lateDays = (int) ceil($lateSeconds / 86400);
-                    $lateAmount = round($lateDays * $lateRate, 2);
+                    $lateAmount = $lateDays * $lateRate;
                     if ($lateAmount > 99999999.99) {
                         throw new InvalidArgumentException('The late fee exceeds the maximum supported invoice amount.');
                     }
@@ -285,7 +285,7 @@ function process_action(PDO $pdo): void
                 $invoiceId = post_int('invoice_id', 1);
                 $method = post_enum('pay_method', ['Cash', 'Card', 'GCash', 'BankTransfer']);
                 $reference = post_string('reference_no', 100, false);
-                $amount = post_amount('pay_amount', 0.01);
+                $amount = post_whole_amount('pay_amount');
                 $pdo->beginTransaction();
                 $invoiceQuery = $pdo->prepare('SELECT invoice_id, invoice_amount, invoice_status FROM tbl_invoice WHERE invoice_id=? FOR UPDATE');
                 $invoiceQuery->execute([$invoiceId]);
@@ -296,8 +296,11 @@ function process_action(PDO $pdo): void
                 $paidQuery = $pdo->prepare('SELECT COALESCE(SUM(pay_amount),0) FROM tbl_payment WHERE invoice_id=?');
                 $paidQuery->execute([$invoiceId]);
                 $balance = round((float) $invoice['invoice_amount'] - (float) $paidQuery->fetchColumn(), 2);
+                if (abs($balance - round($balance)) >= 0.001) {
+                    throw new InvalidArgumentException('This invoice has a fractional balance and cannot be paid using whole-peso payments. Contact an administrator to adjust it.');
+                }
                 if ($amount > $balance + 0.001) {
-                    throw new InvalidArgumentException('Payment cannot exceed the remaining invoice balance of ' . money($balance) . '.');
+                    throw new InvalidArgumentException('Payment cannot exceed the remaining invoice balance of ' . money_compact($balance) . '.');
                 }
                 $pdo->prepare('INSERT INTO tbl_payment (invoice_id,processed_by,pay_method,reference_no,pay_amount) VALUES (?,?,?,?,?)')
                     ->execute([$invoiceId, current_user()['user_id'], $method, $reference ?: null, $amount]);
@@ -374,12 +377,12 @@ function process_action(PDO $pdo): void
 
             case 'settings_save':
                 require_admin();
-                $reservationFee = post_amount('reservation_fee');
-                $lateFee = post_amount('late_fee_per_day');
+                $reservationFee = post_whole_amount('reservation_fee', 0);
+                $lateFee = post_whole_amount('late_fee_per_day', 0);
                 $pdo->beginTransaction();
                 $statement = $pdo->prepare('INSERT INTO tbl_setting (setting_key,setting_value) VALUES (?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)');
-                $statement->execute(['reservation_fee', number_format($reservationFee, 2, '.', '')]);
-                $statement->execute(['late_fee_per_day', number_format($lateFee, 2, '.', '')]);
+                $statement->execute(['reservation_fee', (string) $reservationFee]);
+                $statement->execute(['late_fee_per_day', (string) $lateFee]);
                 $pdo->commit();
                 flash('Billing settings saved.');
                 redirect('settings');
